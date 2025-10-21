@@ -14,6 +14,10 @@ public class ChatServerFX extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/chat_server.fxml"));
         Parent root = loader.load();
         
+        // Get controller and set stage for file dialogs
+        ui.controllers.ServerController controller = loader.getController();
+        controller.setStage(primaryStage);
+        
         // Create scene with narrow vertical layout
         Scene scene = new Scene(root, 500, 750);
         

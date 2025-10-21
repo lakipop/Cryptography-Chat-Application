@@ -102,6 +102,15 @@
         <VBox>
             <!-- Message Input Area -->
             <HBox styleClass="input-area" spacing="10" alignment="CENTER">
+                <!-- File Attach Button -->
+                <Button fx:id="attachFileButton" text="📎" styleClass="button-icon" 
+                       onAction="#onAttachFileClicked">
+                    <tooltip><Tooltip text="Attach and send file"/></tooltip>
+                    <font>
+                        <Font size="20"/>
+                    </font>
+                </Button>
+                
                 <!-- Emoji Button -->
                 <Button fx:id="emojiButton" text="😊" styleClass="button-icon" 
                        onAction="#onEmojiClicked">

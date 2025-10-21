@@ -9,8 +9,6 @@ import javafx.scene.text.TextFlow;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.animation.Timeline;
-import javafx.animation.KeyFrame;
-import javafx.util.Duration;
 import javafx.stage.Popup;
 
 import crypto.*;
@@ -70,6 +68,13 @@ public class ServerController {
         "📁", "💬", "🚀", "⚡", "🌟", "✨", "🔐", "🔑"
     };
     
+    // File Transfer
+    @FXML private Button attachFileButton;
+    private FileTransferHandler fileTransferHandler;
+    private java.util.Map<String, java.util.List<EncryptedFileChunk>> incomingFileChunks = new java.util.concurrent.ConcurrentHashMap<>();
+    private java.util.Map<String, FileMetadata> incomingFileMetadata = new java.util.concurrent.ConcurrentHashMap<>();
+    private javafx.stage.Stage stage;
+    
     @FXML
     public void initialize() {
         // Redirect System.out to encryption log
@@ -106,7 +111,7 @@ public class ServerController {
     private void setupNetworking() {
         executor.submit(() -> {
             try {
-                updateStatus("Starting server...", "🟡 Starting", false);
+                Platform.runLater(() -> updateStatus("Starting server...", "🟡 Starting", false));
                 
                 serverSocket = new ServerSocket(PORT);
                 
@@ -159,12 +164,17 @@ public class ServerController {
         String encryptedSymmetricKey = in.readLine();
         symmetricKey128Bit = RSAUtil.decryptWithPrivateKey(encryptedSymmetricKey, myPrivateKey);
         
+        // Initialize file transfer handler with cipher
+        BlockCipher cipher = new BlockCipher(symmetricKey128Bit);
+        fileTransferHandler = new FileTransferHandler(cipher);
+        
         Platform.runLater(() -> {
             addSystemMessage("🔐 Symmetric key received and decrypted");
             addSystemMessage("✅ Secure channel established - Ready to chat!");
             addSystemMessage("═══════════════════════════════════════");
             sendButton.setDisable(false);
             messageInputField.setDisable(false);
+            attachFileButton.setDisable(false);
         });
     }
     
@@ -173,6 +183,20 @@ public class ServerController {
             try {
                 String receivedLine;
                 while ((receivedLine = in.readLine()) != null) {
+                    
+                    // Check if this is a file transfer message
+                    if (receivedLine.startsWith("FILE_START||")) {
+                        handleFileStart(receivedLine);
+                        continue;
+                    } else if (receivedLine.startsWith("FILE_CHUNK||")) {
+                        handleFileChunk(receivedLine);
+                        continue;
+                    } else if (receivedLine.startsWith("FILE_END||")) {
+                        handleFileEnd(receivedLine);
+                        continue;
+                    }
+                    
+                    // Regular text message
                     String[] parts = receivedLine.split("\\|\\|SIG\\|\\|");
                     if (parts.length == 2) {
                         String encryptedMsg = parts[0];
@@ -454,5 +478,205 @@ public class ServerController {
         );
         timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
         timeline.play();
+    }
+    
+    // ========================================
+    // FILE TRANSFER METHODS
+    // ========================================
+    
+    public void setStage(javafx.stage.Stage stage) { this.stage = stage; }
+    
+    @FXML
+    private void onAttachFileClicked() {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Select File to Send");
+        fileChooser.getExtensionFilters().addAll(
+            new javafx.stage.FileChooser.ExtensionFilter("All Files", "*.*"),
+            new javafx.stage.FileChooser.ExtensionFilter("Images", "*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp"),
+            new javafx.stage.FileChooser.ExtensionFilter("Documents", "*.pdf", "*.doc", "*.docx", "*.txt", "*.xls", "*.xlsx"),
+            new javafx.stage.FileChooser.ExtensionFilter("Videos", "*.mp4", "*.avi", "*.mov", "*.wmv", "*.mkv"),
+            new javafx.stage.FileChooser.ExtensionFilter("Archives", "*.zip", "*.rar", "*.7z")
+        );
+        File selectedFile = fileChooser.showOpenDialog(stage);
+        if (selectedFile != null) sendFile(selectedFile);
+    }
+    
+    private void sendFile(File file) {
+        attachFileButton.setDisable(true);
+        Platform.runLater(() -> addSystemMessage("📤 Sending file: " + file.getName()));
+        executor.submit(() -> {
+            try {
+                Object[] prepared = fileTransferHandler.prepareFileForTransfer(file);
+                FileMetadata metadata = (FileMetadata) prepared[0];
+                @SuppressWarnings("unchecked")
+                java.util.List<EncryptedFileChunk> chunks = (java.util.List<EncryptedFileChunk>) prepared[1];
+                out.println("FILE_START||" + metadata.toProtocolString());
+                Platform.runLater(() -> addSystemMessage("📋 Metadata sent: " + metadata.getFormattedSize()));
+                for (int i = 0; i < chunks.size(); i++) {
+                    EncryptedFileChunk chunk = chunks.get(i);
+                    out.println("FILE_CHUNK||" + chunk.toProtocolString());
+                    final int progress = chunk.getProgressPercentage();
+                    final int current = i + 1;
+                    final int total = chunks.size();
+                    Platform.runLater(() -> updateStatus("Sending file: " + progress + "% (" + current + "/" + total + ")", "🟢 Client Connected", true));
+                    Thread.sleep(10);
+                }
+                String signature = RSAUtil.signMessage(metadata.getChecksum(), myPrivateKey);
+                out.println("FILE_END||" + metadata.getChecksum() + "||SIG||" + signature);
+                Platform.runLater(() -> {
+                    addSentFileMessage(metadata);
+                    addSystemMessage("✅ File sent successfully: " + file.getName());
+                    updateStatus("Client Connected", "🟢 Client Connected", true);
+                    attachFileButton.setDisable(false);
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> { showError("File send failed: " + e.getMessage()); attachFileButton.setDisable(false); });
+            }
+        });
+    }
+    
+    private void handleFileStart(String message) {
+        try {
+            String metadataString = message.substring("FILE_START||".length());
+            FileMetadata metadata = FileMetadata.fromProtocolString(metadataString);
+            incomingFileMetadata.put(metadata.getFilename(), metadata);
+            incomingFileChunks.put(metadata.getFilename(), new java.util.ArrayList<>());
+            Platform.runLater(() -> addSystemMessage("📥 Receiving file: " + metadata.getFilename() + " (" + metadata.getFormattedSize() + ")"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Platform.runLater(() -> showError("File receive error: " + e.getMessage()));
+        }
+    }
+    
+    private void handleFileChunk(String message) {
+        try {
+            String chunkString = message.substring("FILE_CHUNK||".length());
+            EncryptedFileChunk chunk = EncryptedFileChunk.fromProtocolString(chunkString);
+            for (FileMetadata metadata : incomingFileMetadata.values()) {
+                java.util.List<EncryptedFileChunk> chunks = incomingFileChunks.get(metadata.getFilename());
+                if (chunks != null && chunks.size() == chunk.getChunkIndex()) {
+                    chunks.add(chunk);
+                    final int progress = chunk.getProgressPercentage();
+                    Platform.runLater(() -> updateStatus("Receiving file: " + progress + "%", "🟢 Client Connected", true));
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void handleFileEnd(String message) {
+        executor.submit(() -> {
+            try {
+                String[] parts = message.substring("FILE_END||".length()).split("\\|\\|SIG\\|\\|");
+                String checksum = parts[0];
+                String signature = parts[1];
+                FileMetadata metadata = null;
+                for (FileMetadata meta : incomingFileMetadata.values()) {
+                    if (meta.getChecksum().equals(checksum)) { metadata = meta; break; }
+                }
+                if (metadata == null) { Platform.runLater(() -> showError("File metadata not found")); return; }
+                boolean isAuthentic = RSAUtil.verifySignature(checksum, signature, otherPublicKey);
+                if (!isAuthentic) { Platform.runLater(() -> showError("File signature verification failed!")); return; }
+                java.util.List<EncryptedFileChunk> chunks = incomingFileChunks.get(metadata.getFilename());
+                byte[] fileData = fileTransferHandler.receiveAndDecryptFile(metadata, chunks);
+                final FileMetadata finalMetadata = metadata;
+                Platform.runLater(() -> {
+                    javafx.stage.FileChooser saveDialog = new javafx.stage.FileChooser();
+                    saveDialog.setTitle("Save Received File");
+                    saveDialog.setInitialFileName(finalMetadata.getFilename());
+                    File saveLocation = saveDialog.showSaveDialog(stage);
+                    if (saveLocation != null) {
+                        try {
+                            fileTransferHandler.saveFile(fileData, saveLocation);
+                            addReceivedFileMessage(finalMetadata);
+                            addSystemMessage("✅ File received: " + finalMetadata.getFilename());
+                            messagesReceived++;
+                            messagesReceivedLabel.setText(String.valueOf(messagesReceived));
+                        } catch (IOException e) { showError("Failed to save file: " + e.getMessage()); }
+                    }
+                    incomingFileMetadata.remove(finalMetadata.getFilename());
+                    incomingFileChunks.remove(finalMetadata.getFilename());
+                    updateStatus("Client Connected", "🟢 Client Connected", true);
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> { showError("File receive error: " + e.getMessage()); updateStatus("Client Connected", "🟢 Client Connected", true); });
+            }
+        });
+    }
+    
+    private void addSentFileMessage(FileMetadata metadata) {
+        VBox messageBox = new VBox(5);
+        messageBox.setAlignment(Pos.CENTER_RIGHT);
+        messageBox.setPadding(new Insets(0, 0, 0, 60));
+        VBox fileBox = new VBox(5);
+        fileBox.setStyle("-fx-background-color: #E8F5E9; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #66BB6A; -fx-border-width: 1px; -fx-border-radius: 12px;");
+        fileBox.setMaxWidth(350);
+        Label fileIcon = new Label(getFileIcon(metadata.getMimeType()));
+        fileIcon.setStyle("-fx-font-size: 32px;");
+        Label fileName = new Label(metadata.getFilename());
+        fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        Label fileSize = new Label(metadata.getFormattedSize() + " • " + getFileTypeLabel(metadata.getMimeType()));
+        fileSize.setStyle("-fx-text-fill: #71717A; -fx-font-size: 12px;");
+        Label status = new Label("✅ Sent");
+        status.setStyle("-fx-text-fill: #2E7D32; -fx-font-size: 11px;");
+        fileBox.getChildren().addAll(fileIcon, fileName, fileSize, status);
+        Label timestamp = new Label(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+        timestamp.setStyle("-fx-text-fill: #71717A; -fx-font-size: 11px;");
+        timestamp.setMaxWidth(Double.MAX_VALUE);
+        timestamp.setAlignment(Pos.CENTER_RIGHT);
+        messageBox.getChildren().addAll(fileBox, timestamp);
+        chatContainer.getChildren().add(messageBox);
+    }
+    
+    private void addReceivedFileMessage(FileMetadata metadata) {
+        VBox messageBox = new VBox(5);
+        messageBox.setAlignment(Pos.CENTER_LEFT);
+        messageBox.setPadding(new Insets(0, 60, 0, 0));
+        VBox fileBox = new VBox(5);
+        fileBox.setStyle("-fx-background-color: #FAFAFA; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #D4D4D8; -fx-border-width: 1px; -fx-border-radius: 12px;");
+        fileBox.setMaxWidth(350);
+        Label fileIcon = new Label(getFileIcon(metadata.getMimeType()));
+        fileIcon.setStyle("-fx-font-size: 32px;");
+        Label fileName = new Label(metadata.getFilename());
+        fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        Label fileSize = new Label(metadata.getFormattedSize() + " • " + getFileTypeLabel(metadata.getMimeType()));
+        fileSize.setStyle("-fx-text-fill: #71717A; -fx-font-size: 12px;");
+        Label status = new Label("✅ Received");
+        status.setStyle("-fx-text-fill: #2E7D32; -fx-font-size: 11px;");
+        fileBox.getChildren().addAll(fileIcon, fileName, fileSize, status);
+        Label timestamp = new Label(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+        timestamp.setStyle("-fx-text-fill: #71717A; -fx-font-size: 11px;");
+        messageBox.getChildren().addAll(fileBox, timestamp);
+        chatContainer.getChildren().add(messageBox);
+    }
+    
+    private String getFileIcon(String mimeType) {
+        if (mimeType.startsWith("image/")) return "🖼️";
+        if (mimeType.startsWith("video/")) return "🎥";
+        if (mimeType.startsWith("audio/")) return "🎵";
+        if (mimeType.contains("pdf")) return "📄";
+        if (mimeType.contains("word") || mimeType.contains("document")) return "📝";
+        if (mimeType.contains("excel") || mimeType.contains("spreadsheet")) return "📊";
+        if (mimeType.contains("powerpoint") || mimeType.contains("presentation")) return "📽️";
+        if (mimeType.contains("zip") || mimeType.contains("rar") || mimeType.contains("7z")) return "📦";
+        if (mimeType.contains("text")) return "📃";
+        return "📁";
+    }
+    
+    private String getFileTypeLabel(String mimeType) {
+        if (mimeType.startsWith("image/")) return "Image";
+        if (mimeType.startsWith("video/")) return "Video";
+        if (mimeType.startsWith("audio/")) return "Audio";
+        if (mimeType.contains("pdf")) return "PDF Document";
+        if (mimeType.contains("word")) return "Word Document";
+        if (mimeType.contains("excel")) return "Excel Spreadsheet";
+        if (mimeType.contains("powerpoint")) return "PowerPoint";
+        if (mimeType.contains("zip") || mimeType.contains("rar")) return "Archive";
+        if (mimeType.contains("text")) return "Text File";
+        return "File";
     }
 }

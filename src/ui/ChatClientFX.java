@@ -14,6 +14,10 @@ public class ChatClientFX extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/chat_client.fxml"));
         Parent root = loader.load();
         
+        // Get controller and set stage for file dialogs
+        ui.controllers.ClientController controller = loader.getController();
+        controller.setStage(primaryStage);
+        
         // Create scene with narrow vertical layout
         Scene scene = new Scene(root, 500, 750);
         
