@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" 
+            xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="ui.controllers.ClientController"
+            stylesheets="@../css/chat_theme.css"
+            prefWidth="500" prefHeight="750">
+
+    <!-- TOP: Header Bar -->
+    <top>
+        <HBox styleClass="header-bar" alignment="CENTER_LEFT">
+            <Label text="👤 Secure Chat Client" styleClass="header-label">
+                <font>
+                    <Font name="Segoe UI Semibold" size="18"/>
+                </font>
+            </Label>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="connectionStatusLabel" text="🔴 Disconnected" styleClass="status-label">
+                <font>
+                    <Font size="12"/>
+                </font>
+            </Label>
+        </HBox>
+    </top>
+
+    <!-- CENTER: Tab Pane with Chat and Encryption Log -->
+    <center>
+        <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
+            <!-- Tab 1: Chat Messages -->
+            <Tab text="💬 Chat">
+                <ScrollPane fx:id="chatScrollPane" styleClass="chat-scroll" fitToWidth="true">
+                    <VBox fx:id="chatContainer" styleClass="chat-container" spacing="12">
+                        <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+            <!-- Tab 2: Encryption Process Log -->
+            <Tab text="🔒 Encryption Log">
+                <TextArea fx:id="encryptionLogArea" styleClass="encryption-log" 
+                         editable="false" wrapText="true">
+                    <font>
+                        <Font name="Consolas" size="11"/>
+                    </font>
+                </TextArea>
+            </Tab>
+
+            <!-- Tab 3: Client Status -->
+            <Tab text="⚙️ Status">
+                <VBox spacing="15">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    <Label text="Connection Information" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                    <Separator/>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Status:" style="-fx-font-weight: bold; -fx-min-width: 120px;"/>
+                        <Label fx:id="statusDetailLabel" text="Disconnected"/>
+                    </HBox>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Server:" style="-fx-font-weight: bold; -fx-min-width: 120px;"/>
+                        <Label fx:id="serverAddressLabel" text="127.0.0.1:12345"/>
+                    </HBox>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Encryption:" style="-fx-font-weight: bold; -fx-min-width: 120px;"/>
+                        <Label fx:id="encryptionInfoLabel" text="10-Round Block Cipher (128-bit)"/>
+                    </HBox>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Messages Sent:" style="-fx-font-weight: bold; -fx-min-width: 120px;"/>
+                        <Label fx:id="messagesSentLabel" text="0"/>
+                    </HBox>
+                    
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Messages Received:" style="-fx-font-weight: bold; -fx-min-width: 120px;"/>
+                        <Label fx:id="messagesReceivedLabel" text="0"/>
+                    </HBox>
+                    
+                    <Region VBox.vgrow="ALWAYS"/>
+                    
+                    <TextArea fx:id="keyInfoArea" editable="false" wrapText="true" 
+                             promptText="RSA public keys will be displayed here..."
+                             prefHeight="150" style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
+                </VBox>
+            </Tab>
+        </TabPane>
+    </center>
+
+    <!-- BOTTOM: Input Area and Control Buttons -->
+    <bottom>
+        <VBox>
+            <!-- Message Input Area -->
+            <HBox styleClass="input-area" spacing="10" alignment="CENTER">
+                <!-- Emoji Button -->
+                <Button fx:id="emojiButton" text="😊" styleClass="button-icon" 
+                       onAction="#onEmojiClicked">
+                    <tooltip><Tooltip text="Insert emoji"/></tooltip>
+                    <font>
+                        <Font size="20"/>
+                    </font>
+                </Button>
+
+                <!-- Message Input Field -->
+                <TextField fx:id="messageInputField" styleClass="message-input" 
+                          promptText="Type your message..." 
+                          onAction="#onSendMessage"
+                          HBox.hgrow="ALWAYS">
+                    <font>
+                        <Font size="14"/>
+                    </font>
+                </TextField>
+
+                <!-- Send Button -->
+                <Button fx:id="sendButton" text="Send 🚀" styleClass="button-primary" 
+                       onAction="#onSendMessage" defaultButton="true">
+                    <font>
+                        <Font name="Segoe UI Semibold" size="14"/>
+                    </font>
+                </Button>
+            </HBox>
+
+            <!-- Control Buttons Bar -->
+            <HBox styleClass="control-bar" spacing="10" alignment="CENTER_LEFT">
+                <Button text="🔄 Restart Connection" styleClass="button-control" 
+                       onAction="#onRestartConnection">
+                    <tooltip><Tooltip text="Restart connection and regenerate keys"/></tooltip>
+                    <font>
+                        <Font size="13"/>
+                    </font>
+                </Button>
+
+                <Button text="🗑️ Clear Chat" styleClass="button-control, button-danger" 
+                       onAction="#onClearChat">
+                    <tooltip><Tooltip text="Clear chat history (local only)"/></tooltip>
+                    <font>
+                        <Font size="13"/>
+                    </font>
+                </Button>
+
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <Label fx:id="sessionTimeLabel" text="⏱️ 00:00:00" 
+                      style="-fx-text-fill: #71717A; -fx-font-size: 12px;"/>
+            </HBox>
+
+            <!-- Status Bar -->
+            <HBox styleClass="status-bar" spacing="15" alignment="CENTER_LEFT">
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <Region styleClass="status-indicator" fx:id="statusIndicator"/>
+                    <Label fx:id="statusBarLabel" text="Ready" style="-fx-font-size: 12px;"/>
+                </HBox>
+
+                <Separator orientation="VERTICAL"/>
+
+                <Label fx:id="encryptionModeLabel" text="🔐 Fleurdelyx v2.0" 
+                      style="-fx-font-size: 12px;"/>
+
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <Label fx:id="networkQualityLabel" text="📶 ━━━" 
+                      style="-fx-font-size: 12px;"/>
+            </HBox>
+        </VBox>
+    </bottom>
+</BorderPane>

@@ -1,0 +1,462 @@
+/*
+ * Fleurdelyx Chat Application - Modern Environment-Friendly Theme
+ * Color Palette: Forest Green & Light Zinc
+ * Inspired by: Nature, sustainability, calm communication
+ */
+
+/* ============================================
+   ROOT COLOR VARIABLES
+   ============================================ */
+.root {
+    /* Primary Colors - Forest Green Theme */
+    -fx-primary-green: #2E7D32;        /* Deep Forest Green - Primary actions */
+    -fx-secondary-green: #388E3C;      /* Medium Forest Green - Hover states */
+    -fx-accent-green: #66BB6A;          /* Light Green - Accents */
+    -fx-pale-green: #C8E6C9;           /* Pale Green - Highlights */
+    -fx-mint: #E8F5E9;                 /* Mint - Subtle backgrounds */
+    
+    /* Background Colors - Light Zinc & Neutrals */
+    -fx-bg-main: #E4E4E7;              /* Light Zinc - Main background */
+    -fx-bg-panel: #FAFAFA;              /* Off-White - Cards & panels */
+    -fx-bg-input: #FFFFFF;             /* Pure White - Input fields */
+    -fx-bg-hover: #F4F4F5;             /* Light gray - Hover */
+    
+    /* Text Colors */
+    -fx-text-primary: #18181B;            /* Zinc-900 - Primary text */
+    -fx-text-secondary: #3F3F46;          /* Zinc-700 - Secondary text */
+    -fx-text-tertiary: #71717A;           /* Zinc-500 - Tertiary text */
+    -fx-text-on-green: #FFFFFF;        /* White on green */
+    
+    /* Status Colors */
+    -fx-success: #2E7D32;              /* Green - Success */
+    -fx-warning: #F57C00;              /* Amber - Warning */
+    -fx-error: #D32F2F;                /* Red - Error */
+    -fx-info: #1976D2;                 /* Blue - Info */
+    
+    /* Border & Shadow */
+    -fx-border-color: #D4D4D8;         /* Zinc-300 */
+    -fx-shadow-color: rgba(0, 0, 0, 0.1);
+    
+    /* Spacing & Sizing */
+    -fx-padding-small: 8px;
+    -fx-padding-medium: 12px;
+    -fx-padding-large: 16px;
+    -fx-border-radius: 12px;
+    -fx-border-radius-small: 8px;
+}
+
+/* ============================================
+   GENERAL STYLING
+   ============================================ */
+.root {
+    -fx-background-color: #E4E4E7;
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 14px;
+}
+
+/* ============================================
+   HEADER BAR
+   ============================================ */
+.header-bar {
+    -fx-background-color: linear-gradient(to bottom, #2E7D32, #388E3C);
+    -fx-padding: 16px 20px;
+    -fx-spacing: 12px;
+    -fx-alignment: center-left;
+}
+
+.header-bar .label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.status-label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 12px;
+    -fx-opacity: 0.9;
+}
+
+/* ============================================
+   TAB PANE
+   ============================================ */
+.tab-pane {
+    -fx-background-color: #E4E4E7;
+    -fx-tab-min-height: 40px;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: #FAFAFA;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 8px 20px;
+}
+
+.tab:selected {
+    -fx-background-color: #E8F5E9;
+    -fx-border-color: #2E7D32;
+    -fx-border-width: 0 0 3px 0;
+}
+
+.tab .tab-label {
+    -fx-text-fill: #3F3F46;
+    -fx-font-size: 14px;
+    -fx-font-weight: normal;
+}
+
+.tab:selected .tab-label {
+    -fx-text-fill: #2E7D32;
+    -fx-font-weight: bold;
+}
+
+.tab:hover {
+    -fx-background-color: #F4F4F5;
+}
+
+/* ============================================
+   CHAT AREA
+   ============================================ */
+.chat-scroll {
+    -fx-background-color: #FAFAFA;
+    -fx-border-color: transparent;
+}
+
+.chat-container {
+    -fx-background-color: #FAFAFA;
+    -fx-padding: 20px;
+    -fx-spacing: 12px;
+}
+
+/* Message Bubbles - Sent (User) */
+.message-sent {
+    -fx-background-color: #2E7D32;
+    -fx-background-radius: 18px 18px 4px 18px;
+    -fx-padding: 12px 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 2);
+}
+
+.message-sent .text {
+    -fx-fill: #FFFFFF;
+    fill: #FFFFFF;
+    -fx-font-size: 14px;
+}
+
+.message-sent-container {
+    -fx-alignment: center-right;
+    -fx-padding: 0 0 0 60px;
+}
+
+/* Message Bubbles - Received (Other party) */
+.message-received {
+    -fx-background-color: #F5F5F5;
+    -fx-background-radius: 18px 18px 18px 4px;
+    -fx-padding: 12px 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 2);
+}
+
+.message-received .text {
+    -fx-fill: #18181B;
+    fill: #18181B;
+    -fx-font-size: 14px;
+}
+
+.message-received-container {
+    -fx-alignment: center-left;
+    -fx-padding: 0 60px 0 0;
+}
+
+/* Timestamp & Status */
+.message-timestamp {
+    -fx-text-fill: #71717A;
+    -fx-font-size: 11px;
+    -fx-padding: 2px 8px 0 8px;
+}
+
+.message-status {
+    -fx-text-fill: #66BB6A;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* System Messages */
+.system-message {
+    -fx-text-fill: #71717A;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+    -fx-alignment: center;
+    -fx-padding: 8px;
+}
+
+/* ============================================
+   ENCRYPTION LOG AREA
+   ============================================ */
+.encryption-log {
+    -fx-background-color: #F1F8F4;  /* Very light mint background */
+    -fx-text-fill: #1B5E20;         /* Dark green text */
+    -fx-font-family: "Consolas", "Courier New", "Monaco", monospace;
+    -fx-font-size: 11px;
+    -fx-padding: 12px;
+    -fx-border-color: #C8E6C9;
+    -fx-border-width: 1px;
+}
+
+.encryption-log .content {
+    -fx-background-color: #F1F8F4;
+}
+
+.encryption-log .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+/* ============================================
+   INPUT AREA
+   ============================================ */
+.input-area {
+    -fx-background-color: #FAFAFA;
+    -fx-padding: 16px;
+    -fx-spacing: 10px;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 1px 0 0 0;
+    -fx-alignment: center;
+}
+
+.message-input {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 2px;
+    -fx-border-radius: 24px;
+    -fx-padding: 12px 20px;
+    -fx-font-size: 14px;
+    -fx-text-fill: #18181B;
+    -fx-prompt-text-fill: #71717A;
+}
+
+.message-input:focused {
+    -fx-border-color: #2E7D32;
+    -fx-background-color: #FFFFFF;
+    -fx-effect: dropshadow(gaussian, #2E7D32, 5, 0.2, 0, 0);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.button {
+    -fx-background-color: #F4F4F5;
+    -fx-text-fill: #18181B;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10px 20px;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    cursor: pointer;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 4, 0, 0, 1);
+}
+
+.button:hover {
+    -fx-background-color: #E4E4E7;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.button:pressed {
+    -fx-background-color: #D4D4D8;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Primary Button (Send, etc) */
+.button-primary {
+    -fx-background-color: linear-gradient(to bottom, #388E3C, #2E7D32);
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: transparent;
+    -fx-font-weight: bold;
+    -fx-background-radius: 24px;
+    -fx-padding: 12px 30px;
+}
+
+.button-primary:hover {
+    -fx-background-color: linear-gradient(to bottom, #66BB6A, #388E3C);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.button-primary:pressed {
+    -fx-background-color: #2E7D32;
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+/* Icon Buttons (Emoji, Attach, etc) */
+.button-icon {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 50%;
+    -fx-padding: 10px;
+    -fx-min-width: 44px;
+    -fx-min-height: 44px;
+    -fx-max-width: 44px;
+    -fx-max-height: 44px;
+    -fx-font-size: 20px;
+}
+
+.button-icon:hover {
+    -fx-background-color: #E8F5E9;
+}
+
+.button-icon:pressed {
+    -fx-background-color: #C8E6C9;
+}
+
+/* Control Buttons (Restart, Clear, Settings) */
+.button-control {
+    -fx-background-color: #FAFAFA;
+    -fx-border-color: #D4D4D8;
+    -fx-padding: 8px 16px;
+    -fx-font-size: 13px;
+}
+
+.button-control:hover {
+    -fx-background-color: #E8F5E9;
+    -fx-border-color: #66BB6A;
+}
+
+/* Danger Button (Clear, etc) */
+.button-danger:hover {
+    -fx-background-color: #FFEBEE;
+    -fx-border-color: -fx-error;
+    -fx-text-fill: -fx-error;
+}
+
+/* ============================================
+   CONTROL BAR (Bottom buttons)
+   ============================================ */
+.control-bar {
+    -fx-background-color: #FAFAFA;
+    -fx-padding: 12px 16px;
+    -fx-spacing: 10px;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 1px 0 0 0;
+    -fx-alignment: center-left;
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+.status-bar {
+    -fx-background-color: #E4E4E7;
+    -fx-padding: 8px 16px;
+    -fx-spacing: 20px;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 1px 0 0 0;
+    -fx-alignment: center-left;
+}
+
+.status-bar .label {
+    -fx-text-fill: #3F3F46;
+    -fx-font-size: 12px;
+}
+
+.status-indicator {
+    -fx-background-color: -fx-success;
+    -fx-background-radius: 50%;
+    -fx-min-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-width: 10px;
+    -fx-max-height: 10px;
+}
+
+.status-disconnected {
+    -fx-background-color: -fx-error;
+}
+
+.status-connecting {
+    -fx-background-color: -fx-warning;
+}
+
+/* ============================================
+   SCROLL BARS
+   ============================================ */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #C0C0C5;
+    -fx-background-radius: 8px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #66BB6A;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* ============================================
+   EMOJI PICKER (if implemented)
+   ============================================ */
+.emoji-picker {
+    -fx-background-color: #FAFAFA;
+    -fx-border-color: #D4D4D8;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 12, 0.3, 0, 4);
+}
+
+.emoji-button {
+    -fx-background-color: transparent;
+    -fx-font-size: 24px;
+    -fx-padding: 8px;
+    -fx-border-color: transparent;
+    -fx-background-radius: 8px;
+}
+
+.emoji-button:hover {
+    -fx-background-color: #E8F5E9;
+}
+
+/* ============================================
+   TOOLTIPS
+   ============================================ */
+.tooltip {
+    -fx-background-color: #1F5F23;
+    -fx-text-fill: white;
+    -fx-background-radius: 6px;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 10px;
+}
+
+/* ============================================
+   PROGRESS INDICATORS
+   ============================================ */
+.progress-bar {
+    -fx-background-color: #F4F4F5;
+    -fx-background-radius: 12px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: linear-gradient(to right, #66BB6A, #2E7D32);
+    -fx-background-radius: 12px;
+    -fx-padding: 4px;
+}
+
+.progress-bar .track {
+    -fx-background-color: #F4F4F5;
+    -fx-background-radius: 12px;
+}
