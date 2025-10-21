@@ -119,8 +119,8 @@ public class ChatServerGUI extends JFrame {
         add(tabbedPane, BorderLayout.CENTER);
         add(inputPanel, BorderLayout.SOUTH);
 
-        sendButton.addActionListener(_ -> sendMessage());
-        messageField.addActionListener(_ -> sendMessage());
+        sendButton.addActionListener(e -> sendMessage());
+        messageField.addActionListener(e -> sendMessage());
 
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         pack();
