@@ -89,18 +89,15 @@ public class FileTransferHandler {
             byte[] chunkData = new byte[chunkSize];
             System.arraycopy(fileData, start, chunkData, 0, chunkSize);
             
-            System.out.println("Chunk " + (i + 1) + "/" + totalChunks + ":");
-            System.out.println("  Bytes: " + start + " to " + (end - 1) + " (" + chunkSize + " bytes)");
+            // Only log every 10th chunk or first/last to reduce UI overhead
+            if (i % 10 == 0 || i == 0 || i == totalChunks - 1) {
+                System.out.println("Chunk " + (i + 1) + "/" + totalChunks + ": " + ((i + 1) * 100 / totalChunks) + "% complete");
+            }
             
             // Encrypt chunk (BlockCipher works on byte arrays converted to strings)
             // For binary data, we Base64 encode first, then encrypt
             String chunkBase64 = Base64.getEncoder().encodeToString(chunkData);
             String encryptedChunk = cipher.encrypt(chunkBase64);
-            
-            System.out.println("  Original: " + chunkSize + " bytes");
-            System.out.println("  Base64: " + chunkBase64.length() + " chars");
-            System.out.println("  Encrypted: " + encryptedChunk.length() + " chars");
-            System.out.println("  Progress: " + ((i + 1) * 100 / totalChunks) + "%\n");
             
             // Create encrypted chunk object
             EncryptedFileChunk chunk = new EncryptedFileChunk(
@@ -153,16 +150,14 @@ public class FileTransferHandler {
         for (int i = 0; i < encryptedChunks.size(); i++) {
             EncryptedFileChunk chunk = encryptedChunks.get(i);
             
-            System.out.println("Decrypting chunk " + (i + 1) + "/" + metadata.getTotalChunks() + ":");
-            System.out.println("  Chunk index: " + chunk.getChunkIndex());
-            System.out.println("  Encrypted size: " + chunk.getEncryptedData().length() + " chars");
+            // Only log every 10th chunk or first/last to reduce UI overhead
+            if (i % 10 == 0 || i == 0 || i == encryptedChunks.size() - 1) {
+                System.out.println("Decrypting chunk " + (i + 1) + "/" + metadata.getTotalChunks() + ": " + chunk.getProgressPercentage() + "% complete");
+            }
             
             // Decrypt chunk
             String decryptedBase64 = cipher.decrypt(chunk.getEncryptedData());
             byte[] chunkData = Base64.getDecoder().decode(decryptedBase64);
-            
-            System.out.println("  Decrypted: " + chunkData.length + " bytes");
-            System.out.println("  Expected: " + chunk.getOriginalSize() + " bytes");
             
             // Verify size matches
             if (chunkData.length != chunk.getOriginalSize()) {
@@ -171,8 +166,6 @@ public class FileTransferHandler {
             
             // Write to output stream
             fileOutputStream.write(chunkData);
-            System.out.println("  Status: OK - Added to file buffer");
-            System.out.println("  Progress: " + chunk.getProgressPercentage() + "%\n");
         }
         
         byte[] completeFile = fileOutputStream.toByteArray();

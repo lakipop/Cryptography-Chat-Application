@@ -9,6 +9,9 @@ import javafx.scene.text.TextFlow;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.animation.Animation;
+import javafx.util.Duration;
 import javafx.stage.Popup;
 
 import crypto.*;
@@ -73,38 +76,45 @@ public class ServerController {
     private FileTransferHandler fileTransferHandler;
     private java.util.Map<String, java.util.List<EncryptedFileChunk>> incomingFileChunks = new java.util.concurrent.ConcurrentHashMap<>();
     private java.util.Map<String, FileMetadata> incomingFileMetadata = new java.util.concurrent.ConcurrentHashMap<>();
+    private java.util.Map<String, byte[]> receivedFilesData = new java.util.concurrent.ConcurrentHashMap<>(); // Store received file data
     private javafx.stage.Stage stage;
+    private File selectedFileToSend = null; // File waiting to be sent
     
     @FXML
     public void initialize() {
-        // Redirect System.out to encryption log
-        redirectSystemOut();
-        
-        // Setup RSA keys
-        try {
-            KeyPair keyPair = RSAUtil.generateRSAKeyPair();
-            myPrivateKey = keyPair.getPrivate();
-            myPublicKey = keyPair.getPublic();
+        // Defer all initialization until FXML components are fully injected
+        Platform.runLater(() -> {
+            // Redirect System.out to encryption log
+            redirectSystemOut();
             
-            Platform.runLater(() -> {
-                keyInfoArea.appendText("RSA Key Pair Generated\n");
-                keyInfoArea.appendText("Public Key: " + 
-                    RSAUtil.publicKeyToString(myPublicKey).substring(0, 50) + "...\n");
-            });
-        } catch (Exception e) {
-            showError("RSA Key Generation Failed: " + e.getMessage());
-            return;
-        }
-        
-        // Start network connection
-        setupNetworking();
-        
-        // Start session timer
-        startSessionTimer();
-        
-        // Auto-scroll chat to bottom
-        chatContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            chatScrollPane.setVvalue(1.0);
+            // Setup RSA keys
+            try {
+                KeyPair keyPair = RSAUtil.generateRSAKeyPair();
+                myPrivateKey = keyPair.getPrivate();
+                myPublicKey = keyPair.getPublic();
+                
+                if (keyInfoArea != null) {
+                    keyInfoArea.appendText("RSA Key Pair Generated\n");
+                    keyInfoArea.appendText("Public Key: " + 
+                        RSAUtil.publicKeyToString(myPublicKey).substring(0, 50) + "...\n");
+                }
+            } catch (Exception e) {
+                showError("RSA Key Generation Failed: " + e.getMessage());
+                return;
+            }
+            
+            // Start network connection
+            setupNetworking();
+            
+            // Start session timer
+            startSessionTimer();
+            
+            // Auto-scroll chat to bottom
+            if (chatContainer != null && chatScrollPane != null) {
+                chatContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
+                    chatScrollPane.setVvalue(1.0);
+                });
+            }
         });
     }
     
@@ -118,7 +128,9 @@ public class ServerController {
                 Platform.runLater(() -> {
                     updateStatus("Waiting for client", "🟡 Waiting", false);
                     addSystemMessage("🔐 Server listening on port " + PORT);
-                    serverPortLabel.setText("Port " + PORT);
+                    if (serverPortLabel != null) {
+                        serverPortLabel.setText("Port " + PORT);
+                    }
                 });
                 
                 socket = serverSocket.accept();
@@ -130,7 +142,9 @@ public class ServerController {
                 Platform.runLater(() -> {
                     updateStatus("Connected", "🟢 Client Connected", true);
                     addSystemMessage("✅ Client connected from " + clientIp);
-                    clientIpLabel.setText(clientIp);
+                    if (clientIpLabel != null) {
+                        clientIpLabel.setText(clientIp);
+                    }
                 });
                 
                 exchangePublicKeys();
@@ -232,6 +246,19 @@ public class ServerController {
     
     @FXML
     private void onSendMessage() {
+        // Check if sending a file
+        if (selectedFileToSend != null) {
+            sendFile(selectedFileToSend);
+            // Reset file selection
+            selectedFileToSend = null;
+            messageInputField.clear();
+            messageInputField.setEditable(true);
+            sendButton.setText("Send 🚀");
+            attachFileButton.setDisable(false);
+            return;
+        }
+        
+        // Otherwise send text message
         String msg = messageInputField.getText().trim();
         if (msg.isEmpty() || out == null) return;
         
@@ -423,26 +450,36 @@ public class ServerController {
     }
     
     private void addSystemMessage(String message) {
-        Label sysMsg = new Label(message);
-        sysMsg.getStyleClass().add("system-message");
-        sysMsg.setMaxWidth(Double.MAX_VALUE);
-        sysMsg.setAlignment(Pos.CENTER);
-        chatContainer.getChildren().add(sysMsg);
+        if (chatContainer != null) {
+            Label sysMsg = new Label(message);
+            sysMsg.getStyleClass().add("system-message");
+            sysMsg.setMaxWidth(Double.MAX_VALUE);
+            sysMsg.setAlignment(Pos.CENTER);
+            chatContainer.getChildren().add(sysMsg);
+        }
     }
     
     private void updateStatus(String statusBar, String connection, boolean connected) {
-        statusBarLabel.setText(statusBar);
-        connectionStatusLabel.setText(connection);
-        statusDetailLabel.setText(statusBar);
+        if (statusBarLabel != null) {
+            statusBarLabel.setText(statusBar);
+        }
+        if (connectionStatusLabel != null) {
+            connectionStatusLabel.setText(connection);
+        }
+        if (statusDetailLabel != null) {
+            statusDetailLabel.setText(statusBar);
+        }
         
-        if (connected) {
-            statusIndicator.getStyleClass().removeAll("status-disconnected", "status-connecting");
-        } else if (connection.contains("Connecting")) {
-            statusIndicator.getStyleClass().remove("status-disconnected");
-            statusIndicator.getStyleClass().add("status-connecting");
-        } else {
-            statusIndicator.getStyleClass().remove("status-connecting");
-            statusIndicator.getStyleClass().add("status-disconnected");
+        if (statusIndicator != null) {
+            if (connected) {
+                statusIndicator.getStyleClass().removeAll("status-disconnected", "status-connecting");
+            } else if (connection.contains("Connecting")) {
+                statusIndicator.getStyleClass().remove("status-disconnected");
+                statusIndicator.getStyleClass().add("status-connecting");
+            } else {
+                statusIndicator.getStyleClass().remove("status-connecting");
+                statusIndicator.getStyleClass().add("status-disconnected");
+            }
         }
     }
     
@@ -458,7 +495,15 @@ public class ServerController {
         PrintStream ps = new PrintStream(new OutputStream() {
             @Override
             public void write(int b) throws IOException {
-                Platform.runLater(() -> encryptionLogArea.appendText(String.valueOf((char) b)));
+                if (encryptionLogArea != null) {
+                    Platform.runLater(() -> {
+                        try {
+                            encryptionLogArea.appendText(String.valueOf((char) b));
+                        } catch (Exception e) {
+                            // Ignore if UI not ready
+                        }
+                    });
+                }
             }
         });
         System.setOut(ps);
@@ -467,16 +512,18 @@ public class ServerController {
     private void startSessionTimer() {
         sessionStartTime = System.currentTimeMillis();
         
-        Timeline timeline = new javafx.animation.Timeline(
-            new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> {
-                long elapsed = (System.currentTimeMillis() - sessionStartTime) / 1000;
-                long hours = elapsed / 3600;
-                long minutes = (elapsed % 3600) / 60;
-                long seconds = elapsed % 60;
-                sessionTimeLabel.setText(String.format("⏱️ %02d:%02d:%02d", hours, minutes, seconds));
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.seconds(1), e -> {
+                if (sessionTimeLabel != null) {  // Add null check
+                    long elapsed = (System.currentTimeMillis() - sessionStartTime) / 1000;
+                    long hours = elapsed / 3600;
+                    long minutes = (elapsed % 3600) / 60;
+                    long seconds = elapsed % 60;
+                    sessionTimeLabel.setText(String.format("⏱️ %02d:%02d:%02d", hours, minutes, seconds));
+                }
             })
         );
-        timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
     }
     
@@ -498,7 +545,22 @@ public class ServerController {
             new javafx.stage.FileChooser.ExtensionFilter("Archives", "*.zip", "*.rar", "*.7z")
         );
         File selectedFile = fileChooser.showOpenDialog(stage);
-        if (selectedFile != null) sendFile(selectedFile);
+        if (selectedFile != null) {
+            // Check file size (max 100MB)
+            long maxSize = 100 * 1024 * 1024; // 100MB
+            if (selectedFile.length() > maxSize) {
+                showError("File too large! Maximum size is 100MB");
+                return;
+            }
+            
+            // Store selected file and show preview in input box
+            selectedFileToSend = selectedFile;
+            String sizeStr = FileMetadata.formatSize(selectedFile.length());
+            messageInputField.setText("📎 " + selectedFile.getName() + " (" + sizeStr + ")");
+            messageInputField.setEditable(false);
+            sendButton.setText("Send File");
+            attachFileButton.setDisable(true);
+        }
     }
     
     private void sendFile(File file) {
@@ -581,22 +643,21 @@ public class ServerController {
                 boolean isAuthentic = RSAUtil.verifySignature(checksum, signature, otherPublicKey);
                 if (!isAuthentic) { Platform.runLater(() -> showError("File signature verification failed!")); return; }
                 java.util.List<EncryptedFileChunk> chunks = incomingFileChunks.get(metadata.getFilename());
+                
+                // Decrypt and reassemble file (this happens in background thread)
                 byte[] fileData = fileTransferHandler.receiveAndDecryptFile(metadata, chunks);
+                
+                // Store file data in memory for later download
+                receivedFilesData.put(metadata.getFilename(), fileData);
+                
                 final FileMetadata finalMetadata = metadata;
                 Platform.runLater(() -> {
-                    javafx.stage.FileChooser saveDialog = new javafx.stage.FileChooser();
-                    saveDialog.setTitle("Save Received File");
-                    saveDialog.setInitialFileName(finalMetadata.getFilename());
-                    File saveLocation = saveDialog.showSaveDialog(stage);
-                    if (saveLocation != null) {
-                        try {
-                            fileTransferHandler.saveFile(fileData, saveLocation);
-                            addReceivedFileMessage(finalMetadata);
-                            addSystemMessage("✅ File received: " + finalMetadata.getFilename());
-                            messagesReceived++;
-                            messagesReceivedLabel.setText(String.valueOf(messagesReceived));
-                        } catch (IOException e) { showError("Failed to save file: " + e.getMessage()); }
-                    }
+                    addReceivedFileMessage(finalMetadata);
+                    addSystemMessage("✅ File received: " + finalMetadata.getFilename() + " - Click to download");
+                    messagesReceived++;
+                    messagesReceivedLabel.setText(String.valueOf(messagesReceived));
+                    
+                    // Cleanup chunk storage
                     incomingFileMetadata.remove(finalMetadata.getFilename());
                     incomingFileChunks.remove(finalMetadata.getFilename());
                     updateStatus("Client Connected", "🟢 Client Connected", true);
@@ -637,7 +698,7 @@ public class ServerController {
         messageBox.setAlignment(Pos.CENTER_LEFT);
         messageBox.setPadding(new Insets(0, 60, 0, 0));
         VBox fileBox = new VBox(5);
-        fileBox.setStyle("-fx-background-color: #FAFAFA; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #D4D4D8; -fx-border-width: 1px; -fx-border-radius: 12px;");
+        fileBox.setStyle("-fx-background-color: #FAFAFA; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #D4D4D8; -fx-border-width: 1px; -fx-border-radius: 12px; -fx-cursor: hand;");
         fileBox.setMaxWidth(350);
         Label fileIcon = new Label(getFileIcon(metadata.getMimeType()));
         fileIcon.setStyle("-fx-font-size: 32px;");
@@ -645,13 +706,45 @@ public class ServerController {
         fileName.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
         Label fileSize = new Label(metadata.getFormattedSize() + " • " + getFileTypeLabel(metadata.getMimeType()));
         fileSize.setStyle("-fx-text-fill: #71717A; -fx-font-size: 12px;");
-        Label status = new Label("✅ Received");
-        status.setStyle("-fx-text-fill: #2E7D32; -fx-font-size: 11px;");
+        Label status = new Label("💾 Click to download");
+        status.setStyle("-fx-text-fill: #2563EB; -fx-font-size: 11px; -fx-font-weight: bold;");
         fileBox.getChildren().addAll(fileIcon, fileName, fileSize, status);
+        
+        // Make clickable to download
+        fileBox.setOnMouseClicked(e -> downloadReceivedFile(metadata));
+        fileBox.setOnMouseEntered(e -> 
+            fileBox.setStyle("-fx-background-color: #E0F2FE; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #2563EB; -fx-border-width: 2px; -fx-border-radius: 12px; -fx-cursor: hand;")
+        );
+        fileBox.setOnMouseExited(e -> 
+            fileBox.setStyle("-fx-background-color: #FAFAFA; -fx-background-radius: 12px; -fx-padding: 12px; -fx-border-color: #D4D4D8; -fx-border-width: 1px; -fx-border-radius: 12px; -fx-cursor: hand;")
+        );
+        
         Label timestamp = new Label(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
         timestamp.setStyle("-fx-text-fill: #71717A; -fx-font-size: 11px;");
         messageBox.getChildren().addAll(fileBox, timestamp);
         chatContainer.getChildren().add(messageBox);
+    }
+    
+    private void downloadReceivedFile(FileMetadata metadata) {
+        byte[] fileData = receivedFilesData.get(metadata.getFilename());
+        if (fileData == null) {
+            showError("File data not found. It may have been already downloaded or cleared.");
+            return;
+        }
+        
+        javafx.stage.FileChooser saveDialog = new javafx.stage.FileChooser();
+        saveDialog.setTitle("Save File");
+        saveDialog.setInitialFileName(metadata.getFilename());
+        
+        File saveLocation = saveDialog.showSaveDialog(stage);
+        if (saveLocation != null) {
+            try {
+                fileTransferHandler.saveFile(fileData, saveLocation);
+                addSystemMessage("💾 File saved: " + saveLocation.getName());
+            } catch (IOException e) {
+                showError("Failed to save file: " + e.getMessage());
+            }
+        }
     }
     
     private String getFileIcon(String mimeType) {

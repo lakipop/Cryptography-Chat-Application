@@ -37,6 +37,20 @@ public class ChatClientFX extends Application {
     }
 
     public static void main(String[] args) {
-        launch(args);
+        try {
+            Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+                System.err.println("FATAL ERROR in thread " + thread.getName() + ":");
+                throwable.printStackTrace();
+                System.err.flush();
+                try { Thread.sleep(5000); } catch (InterruptedException e) {}
+            });
+            launch(args);
+        } catch (Throwable t) {
+            System.err.println("FATAL APPLICATION ERROR:");
+            t.printStackTrace();
+            System.err.flush();
+            try { Thread.sleep(5000); } catch (InterruptedException e) {}
+            System.exit(1);
+        }
     }
 }

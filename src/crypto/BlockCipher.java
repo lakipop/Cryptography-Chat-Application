@@ -9,6 +9,16 @@ public class BlockCipher {
     
     private static final int ROUNDS = 10;
     private static final int IV_SIZE = 16; // 128-bit IV
+    
+    // Set to false to disable verbose logging for production use
+    private static final boolean VERBOSE_LOGGING = false;
+    
+    // Helper method for conditional logging
+    private static void log(String message) {
+        if (VERBOSE_LOGGING) {
+            log(message);
+        }
+    }
 
     public BlockCipher(String key128Bit) {
         if (key128Bit == null || key128Bit.length() != 32) { // 32 hex chars = 128 bits
@@ -31,101 +41,101 @@ public class BlockCipher {
         // ============================================================
         //              ENCRYPTION ALGORITHM - FULL TRACE
         // ============================================================
-        System.out.println("\n");
-        System.out.println("============================================================");
-        System.out.println("              ENCRYPTION PROCESS START                      ");
-        System.out.println("============================================================");
-        System.out.println("Algorithm: 10-Round Block Cipher with IV");
-        System.out.println("Key (128-bit): " + this.key128Bit);
-        System.out.println("------------------------------------------------------------\n");
+        log("\n");
+        log("============================================================");
+        log("              ENCRYPTION PROCESS START                      ");
+        log("============================================================");
+        log("Algorithm: 10-Round Block Cipher with IV");
+        log("Key (128-bit): " + this.key128Bit);
+        log("------------------------------------------------------------\n");
         
         // ====== STEP 1: INITIALIZATION ======
-        System.out.println("STEP 1: INITIALIZATION");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Input plaintext: \"" + plaintext + "\"");
+        log("STEP 1: INITIALIZATION");
+        log("------------------------------------------------------------");
+        log("Input plaintext: \"" + plaintext + "\"");
         
         byte[] plaintextBytes = plaintext.getBytes();
-        System.out.println("Plaintext size:  " + plaintextBytes.length + " bytes");
-        System.out.println("Plaintext (HEX): " + bytesToHex(plaintextBytes));
-        System.out.println("Plaintext (DEC): " + bytesToDecimal(plaintextBytes));
+        log("Plaintext size:  " + plaintextBytes.length + " bytes");
+        log("Plaintext (HEX): " + bytesToHex(plaintextBytes));
+        log("Plaintext (DEC): " + bytesToDecimal(plaintextBytes));
         
         // Generate IV
         byte[] iv = generateIV();
-        System.out.println("\nGenerated IV (Initialization Vector):");
-        System.out.println("  Purpose: Ensures same plaintext produces different ciphertext");
-        System.out.println("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
-        System.out.println("  IV (HEX):    " + bytesToHex(iv));
-        System.out.println("  IV size:     " + iv.length + " bytes (128-bit)\n");
+        log("\nGenerated IV (Initialization Vector):");
+        log("  Purpose: Ensures same plaintext produces different ciphertext");
+        log("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
+        log("  IV (HEX):    " + bytesToHex(iv));
+        log("  IV size:     " + iv.length + " bytes (128-bit)\n");
         
         // ====== STEP 2: PRE-WHITENING ======
-        System.out.println("STEP 2: PRE-WHITENING (XOR with IV)");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Operation: Plaintext XOR IV");
-        System.out.println("Purpose: Hide plaintext patterns before main encryption");
+        log("STEP 2: PRE-WHITENING (XOR with IV)");
+        log("------------------------------------------------------------");
+        log("Operation: Plaintext XOR IV");
+        log("Purpose: Hide plaintext patterns before main encryption");
         
         byte[] xored = xorWithIV(plaintextBytes, iv);
-        System.out.println("\nBefore XOR (Plaintext): " + bytesToHex(plaintextBytes));
-        System.out.println("XOR Key (IV):           " + bytesToHex(iv).substring(0, Math.min(plaintextBytes.length * 2, bytesToHex(iv).length())));
-        System.out.println("After XOR (Whitened):   " + bytesToHex(xored));
-        System.out.println("Status: Pre-whitening complete - data is now randomized\n");
+        log("\nBefore XOR (Plaintext): " + bytesToHex(plaintextBytes));
+        log("XOR Key (IV):           " + bytesToHex(iv).substring(0, Math.min(plaintextBytes.length * 2, bytesToHex(iv).length())));
+        log("After XOR (Whitened):   " + bytesToHex(xored));
+        log("Status: Pre-whitening complete - data is now randomized\n");
         
         byte[] block = xored;
 
         // ====== STEP 3: 10-ROUND TRANSFORMATION ======
-        System.out.println("STEP 3: MULTI-ROUND TRANSFORMATION");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Total Rounds: " + ROUNDS);
-        System.out.println("Each round applies: (1) Transform (2) Split & Mix");
-        System.out.println("============================================================\n");
+        log("STEP 3: MULTI-ROUND TRANSFORMATION");
+        log("------------------------------------------------------------");
+        log("Total Rounds: " + ROUNDS);
+        log("Each round applies: (1) Transform (2) Split & Mix");
+        log("============================================================\n");
         
         for (int round = 1; round <= ROUNDS; round++) {
-            System.out.println("  +-------------------------------------------------------+");
-            System.out.println("  |  ROUND " + String.format("%2d", round) + " / " + ROUNDS + "                                         |");
-            System.out.println("  +-------------------------------------------------------+");
-            System.out.println("  Input Data:  " + formatHex(block, 48));
-            System.out.println("  Data Size:   " + block.length + " bytes");
+            log("  +-------------------------------------------------------+");
+            log("  |  ROUND " + String.format("%2d", round) + " / " + ROUNDS + "                                         |");
+            log("  +-------------------------------------------------------+");
+            log("  Input Data:  " + formatHex(block, 48));
+            log("  Data Size:   " + block.length + " bytes");
             
             // Sub-step 1: Transform
-            System.out.println("\n  >> Sub-Step 1: Byte Transformation");
-            System.out.println("     - Substituting bytes using key-dependent S-box");
-            System.out.println("     - Adding round-specific key material");
+            log("\n  >> Sub-Step 1: Byte Transformation");
+            log("     - Substituting bytes using key-dependent S-box");
+            log("     - Adding round-specific key material");
             block = PerRoundLogic.transform(block, round, this.key128Bit);
-            System.out.println("     After Transform: " + formatHex(block, 48));
+            log("     After Transform: " + formatHex(block, 48));
             
             // Sub-step 2: Split and Mix
-            System.out.println("\n  >> Sub-Step 2: Split & Mix (Diffusion)");
-            System.out.println("     - Splitting block into chunks");
-            System.out.println("     - Mixing positions for avalanche effect");
+            log("\n  >> Sub-Step 2: Split & Mix (Diffusion)");
+            log("     - Splitting block into chunks");
+            log("     - Mixing positions for avalanche effect");
             block = PerRoundLogic.splitAndMix(block, round, this.key128Bit);
-            System.out.println("     After Split&Mix: " + formatHex(block, 48));
+            log("     After Split&Mix: " + formatHex(block, 48));
             
-            System.out.println("\n  Output Data: " + formatHex(block, 48));
-            System.out.println("  Round " + round + " Status: COMPLETE");
-            System.out.println("  +-------------------------------------------------------+\n");
+            log("\n  Output Data: " + formatHex(block, 48));
+            log("  Round " + round + " Status: COMPLETE");
+            log("  +-------------------------------------------------------+\n");
         }
         
-        System.out.println("============================================================");
-        System.out.println("All 10 rounds complete!");
-        System.out.println("Final encrypted block (before IV embedding):");
-        System.out.println("  Full HEX: " + bytesToHex(block));
-        System.out.println("  Size:     " + block.length + " bytes\n");
+        log("============================================================");
+        log("All 10 rounds complete!");
+        log("Final encrypted block (before IV embedding):");
+        log("  Full HEX: " + bytesToHex(block));
+        log("  Size:     " + block.length + " bytes\n");
 
         // ====== STEP 4: IV EMBEDDING ======
-        System.out.println("STEP 4: IV EMBEDDING (Multi-Position XOR)");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Purpose: Hide IV at multiple positions within ciphertext");
-        System.out.println("Method:  XOR IV at positions 0%, 25%, 50%, 75% + prepend IV");
+        log("STEP 4: IV EMBEDDING (Multi-Position XOR)");
+        log("------------------------------------------------------------");
+        log("Purpose: Hide IV at multiple positions within ciphertext");
+        log("Method:  XOR IV at positions 0%, 25%, 50%, 75% + prepend IV");
         
         byte[] finalCiphertext = embedIVMultiPosition(iv, block);
         
         String encrypted = Base64.getEncoder().encodeToString(finalCiphertext);
-        System.out.println("\nFinal encrypted data:");
-        System.out.println("  Raw bytes:   " + finalCiphertext.length + " bytes");
-        System.out.println("  Base64:      " + encrypted);
-        System.out.println("  Base64 len:  " + encrypted.length() + " characters");
-        System.out.println("\n============================================================");
-        System.out.println("              ENCRYPTION PROCESS COMPLETE                   ");
-        System.out.println("============================================================\n");
+        log("\nFinal encrypted data:");
+        log("  Raw bytes:   " + finalCiphertext.length + " bytes");
+        log("  Base64:      " + encrypted);
+        log("  Base64 len:  " + encrypted.length() + " characters");
+        log("\n============================================================");
+        log("              ENCRYPTION PROCESS COMPLETE                   ");
+        log("============================================================\n");
         return encrypted;
     }
 
@@ -136,99 +146,99 @@ public class BlockCipher {
         // ============================================================
         //              DECRYPTION ALGORITHM - FULL TRACE
         // ============================================================
-        System.out.println("\n");
-        System.out.println("============================================================");
-        System.out.println("              DECRYPTION PROCESS START                      ");
-        System.out.println("============================================================");
-        System.out.println("Algorithm: Reverse 10-Round Block Cipher with IV");
-        System.out.println("Key (128-bit): " + this.key128Bit);
-        System.out.println("------------------------------------------------------------\n");
+        log("\n");
+        log("============================================================");
+        log("              DECRYPTION PROCESS START                      ");
+        log("============================================================");
+        log("Algorithm: Reverse 10-Round Block Cipher with IV");
+        log("Key (128-bit): " + this.key128Bit);
+        log("------------------------------------------------------------\n");
         
-        System.out.println("Input ciphertext (Base64): " + ciphertext);
-        System.out.println("Ciphertext length: " + ciphertext.length() + " characters");
+        log("Input ciphertext (Base64): " + ciphertext);
+        log("Ciphertext length: " + ciphertext.length() + " characters");
         
         // Decode from Base64
         byte[] data = Base64.getDecoder().decode(ciphertext);
-        System.out.println("Decoded to binary: " + data.length + " bytes\n");
+        log("Decoded to binary: " + data.length + " bytes\n");
         
         // ====== STEP 1: IV EXTRACTION ======
-        System.out.println("STEP 1: IV EXTRACTION (Multi-Position Reverse XOR)");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Extracting IV from embedded positions...");
+        log("STEP 1: IV EXTRACTION (Multi-Position Reverse XOR)");
+        log("------------------------------------------------------------");
+        log("Extracting IV from embedded positions...");
         
         byte[][] extracted = extractIVMultiPosition(data);
         byte[] iv = extracted[0];
         byte[] actualCiphertext = extracted[1];
         
-        System.out.println("\nExtracted IV:");
-        System.out.println("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
-        System.out.println("  IV (HEX):    " + bytesToHex(iv));
-        System.out.println("  IV size:     " + iv.length + " bytes");
+        log("\nExtracted IV:");
+        log("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
+        log("  IV (HEX):    " + bytesToHex(iv));
+        log("  IV size:     " + iv.length + " bytes");
         
-        System.out.println("\nCiphertext block (after IV removal):");
-        System.out.println("  Full HEX: " + bytesToHex(actualCiphertext));
-        System.out.println("  Size:     " + actualCiphertext.length + " bytes\n");
+        log("\nCiphertext block (after IV removal):");
+        log("  Full HEX: " + bytesToHex(actualCiphertext));
+        log("  Size:     " + actualCiphertext.length + " bytes\n");
         
         byte[] block = actualCiphertext;
 
         // ====== STEP 2: REVERSE 10-ROUND TRANSFORMATION ======
-        System.out.println("STEP 2: REVERSE MULTI-ROUND TRANSFORMATION");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Total Rounds: " + ROUNDS + " (applying in reverse order)");
-        System.out.println("Each round reverses: (1) Unsplit & Unmix (2) Reverse Transform");
-        System.out.println("============================================================\n");
+        log("STEP 2: REVERSE MULTI-ROUND TRANSFORMATION");
+        log("------------------------------------------------------------");
+        log("Total Rounds: " + ROUNDS + " (applying in reverse order)");
+        log("Each round reverses: (1) Unsplit & Unmix (2) Reverse Transform");
+        log("============================================================\n");
         
         for (int round = ROUNDS; round >= 1; round--) {
-            System.out.println("  +-------------------------------------------------------+");
-            System.out.println("  |  ROUND " + String.format("%2d", round) + " REVERSE (Unwinding Round " + round + ")              |");
-            System.out.println("  +-------------------------------------------------------+");
-            System.out.println("  Input Data:  " + formatHex(block, 48));
-            System.out.println("  Data Size:   " + block.length + " bytes");
+            log("  +-------------------------------------------------------+");
+            log("  |  ROUND " + String.format("%2d", round) + " REVERSE (Unwinding Round " + round + ")              |");
+            log("  +-------------------------------------------------------+");
+            log("  Input Data:  " + formatHex(block, 48));
+            log("  Data Size:   " + block.length + " bytes");
             
             // Sub-step 1: Unsplit and Unmix
-            System.out.println("\n  >> Sub-Step 1: Unsplit & Unmix (Reverse Diffusion)");
-            System.out.println("     - Unmixing positions");
-            System.out.println("     - Rejoining split chunks");
+            log("\n  >> Sub-Step 1: Unsplit & Unmix (Reverse Diffusion)");
+            log("     - Unmixing positions");
+            log("     - Rejoining split chunks");
             block = PerRoundLogic.unsplitAndUnmix(block, round, this.key128Bit);
-            System.out.println("     After Unsplit&Unmix: " + formatHex(block, 48));
+            log("     After Unsplit&Unmix: " + formatHex(block, 48));
             
             // Sub-step 2: Reverse Transform
-            System.out.println("\n  >> Sub-Step 2: Reverse Byte Transformation");
-            System.out.println("     - Removing round-specific key material");
-            System.out.println("     - Applying inverse S-box substitution");
+            log("\n  >> Sub-Step 2: Reverse Byte Transformation");
+            log("     - Removing round-specific key material");
+            log("     - Applying inverse S-box substitution");
             block = PerRoundLogic.reverseTransform(block, round, this.key128Bit);
-            System.out.println("     After Reverse Transform: " + formatHex(block, 48));
+            log("     After Reverse Transform: " + formatHex(block, 48));
             
-            System.out.println("\n  Output Data: " + formatHex(block, 48));
-            System.out.println("  Round " + round + " Reverse Status: COMPLETE");
-            System.out.println("  +-------------------------------------------------------+\n");
+            log("\n  Output Data: " + formatHex(block, 48));
+            log("  Round " + round + " Reverse Status: COMPLETE");
+            log("  +-------------------------------------------------------+\n");
         }
         
-        System.out.println("============================================================");
-        System.out.println("All rounds reversed!");
-        System.out.println("Data after reversing all transformations:");
-        System.out.println("  Full HEX: " + bytesToHex(block));
-        System.out.println("  Size:     " + block.length + " bytes\n");
+        log("============================================================");
+        log("All rounds reversed!");
+        log("Data after reversing all transformations:");
+        log("  Full HEX: " + bytesToHex(block));
+        log("  Size:     " + block.length + " bytes\n");
 
         // ====== STEP 3: POST-WHITENING ======
-        System.out.println("STEP 3: POST-WHITENING (Reverse XOR with IV)");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("Operation: Whitened_Data XOR IV = Original_Plaintext");
-        System.out.println("Purpose: Recover original plaintext from whitened data");
+        log("STEP 3: POST-WHITENING (Reverse XOR with IV)");
+        log("------------------------------------------------------------");
+        log("Operation: Whitened_Data XOR IV = Original_Plaintext");
+        log("Purpose: Recover original plaintext from whitened data");
         
         byte[] plaintext = xorWithIV(block, iv);
         
-        System.out.println("\nBefore XOR (Whitened):     " + bytesToHex(block));
-        System.out.println("XOR Key (IV):              " + bytesToHex(iv).substring(0, Math.min(block.length * 2, bytesToHex(iv).length())));
-        System.out.println("After XOR (Plaintext HEX): " + bytesToHex(plaintext));
+        log("\nBefore XOR (Whitened):     " + bytesToHex(block));
+        log("XOR Key (IV):              " + bytesToHex(iv).substring(0, Math.min(block.length * 2, bytesToHex(iv).length())));
+        log("After XOR (Plaintext HEX): " + bytesToHex(plaintext));
         
         String decrypted = new String(plaintext);
-        System.out.println("\nRecovered plaintext: \"" + decrypted + "\"");
-        System.out.println("Plaintext size: " + plaintext.length + " bytes");
+        log("\nRecovered plaintext: \"" + decrypted + "\"");
+        log("Plaintext size: " + plaintext.length + " bytes");
         
-        System.out.println("\n============================================================");
-        System.out.println("              DECRYPTION PROCESS COMPLETE                   ");
-        System.out.println("============================================================\n");
+        log("\n============================================================");
+        log("              DECRYPTION PROCESS COMPLETE                   ");
+        log("============================================================\n");
         return decrypted;
     }
     
@@ -270,13 +280,13 @@ public class BlockCipher {
         // Calculate strategic positions (4 positions spread across the ciphertext)
         int[] positions = calculateIVPositions(ciphertext.length);
         
-        System.out.println("\nEmbedding IV at multiple strategic positions:");
-        System.out.println("  Total positions: " + positions.length);
+        log("\nEmbedding IV at multiple strategic positions:");
+        log("  Total positions: " + positions.length);
         
         for (int i = 0; i < positions.length; i++) {
             int pos = positions[i];
             double percentage = (pos * 100.0 / ciphertext.length);
-            System.out.println("  Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + " of ciphertext)");
+            log("  Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + " of ciphertext)");
             
             // XOR IV bytes at this position (cycle through IV if needed)
             for (int j = 0; j < IV_SIZE && (pos + j) < modifiedCipher.length; j++) {
@@ -284,7 +294,7 @@ public class BlockCipher {
                 modifiedCipher[pos + j] ^= iv[j];
                 byte after = modifiedCipher[pos + j];
                 if (i == 0 && j < 4) { // Show first few XOR operations as example
-                    System.out.println("      Byte " + (pos + j) + ": 0x" + String.format("%02X", before) + 
+                    log("      Byte " + (pos + j) + ": 0x" + String.format("%02X", before) + 
                                      " XOR 0x" + String.format("%02X", iv[j]) + 
                                      " = 0x" + String.format("%02X", after));
                 }
@@ -296,10 +306,10 @@ public class BlockCipher {
         System.arraycopy(iv, 0, result, 0, IV_SIZE);
         System.arraycopy(modifiedCipher, 0, result, IV_SIZE, modifiedCipher.length);
         
-        System.out.println("\nIV embedding complete:");
-        System.out.println("  IV prepended at start: " + IV_SIZE + " bytes");
-        System.out.println("  IV XORed at " + positions.length + " positions inside ciphertext");
-        System.out.println("  Total output size: " + result.length + " bytes");
+        log("\nIV embedding complete:");
+        log("  IV prepended at start: " + IV_SIZE + " bytes");
+        log("  IV XORed at " + positions.length + " positions inside ciphertext");
+        log("  Total output size: " + result.length + " bytes");
         return result;
     }
 
@@ -318,13 +328,13 @@ public class BlockCipher {
         // Calculate same positions as encryption
         int[] positions = calculateIVPositions(modifiedCipher.length);
         
-        System.out.println("Extracting IV from multiple positions (reverse operation):");
-        System.out.println("  Prepended IV extracted: " + IV_SIZE + " bytes");
-        System.out.println("  Total XOR positions: " + positions.length);
+        log("Extracting IV from multiple positions (reverse operation):");
+        log("  Prepended IV extracted: " + IV_SIZE + " bytes");
+        log("  Total XOR positions: " + positions.length);
         
         for (int i = 0; i < positions.length; i++) {
             int pos = positions[i];
-            System.out.println("  Position " + (i+1) + ": Byte offset " + pos + " (reversing XOR)");
+            log("  Position " + (i+1) + ": Byte offset " + pos + " (reversing XOR)");
             
             // Reverse XOR operation (XOR is its own inverse)
             for (int j = 0; j < IV_SIZE && (pos + j) < modifiedCipher.length; j++) {
@@ -332,8 +342,8 @@ public class BlockCipher {
             }
         }
         
-        System.out.println("\nIV extraction complete:");
-        System.out.println("  Original ciphertext restored: " + modifiedCipher.length + " bytes");
+        log("\nIV extraction complete:");
+        log("  Original ciphertext restored: " + modifiedCipher.length + " bytes");
         return new byte[][] { iv, modifiedCipher };
     }
 

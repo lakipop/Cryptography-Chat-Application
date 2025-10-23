@@ -16,7 +16,7 @@
     -fx-mint: #E8F5E9;                 /* Mint - Subtle backgrounds */
     
     /* Background Colors - Light Zinc & Neutrals */
-    -fx-bg-main: #E4E4E7;              /* Light Zinc - Main background */
+    -fx-bg-main: #ebebeb;              /* Light Zinc - Main background */
     -fx-bg-panel: #FAFAFA;              /* Off-White - Cards & panels */
     -fx-bg-input: #FFFFFF;             /* Pure White - Input fields */
     -fx-bg-hover: #F4F4F5;             /* Light gray - Hover */
@@ -133,7 +133,7 @@
 
 /* Message Bubbles - Sent (User) */
 .message-sent {
-    -fx-background-color: #2E7D32;
+    -fx-background-color: #58df5f;
     -fx-background-radius: 18px 18px 4px 18px;
     -fx-padding: 12px 16px;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 2);
