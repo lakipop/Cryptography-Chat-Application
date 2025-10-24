@@ -10,13 +10,13 @@ public class BlockCipher {
     private static final int ROUNDS = 10;
     private static final int IV_SIZE = 16; // 128-bit IV
     
-    // Set to false to disable verbose logging for production use
-    private static final boolean VERBOSE_LOGGING = false;
+    // Set to true to enable educational logging (optimized for performance)
+    public static final boolean VERBOSE_LOGGING = true;  // Public so PerRoundLogic can access
     
     // Helper method for conditional logging
     private static void log(String message) {
         if (VERBOSE_LOGGING) {
-            log(message);
+            System.out.println(message);
         }
     }
 
@@ -38,104 +38,48 @@ public class BlockCipher {
      * 5. Base64 encode for transmission
      */
     public String encrypt(String plaintext) {
-        // ============================================================
-        //              ENCRYPTION ALGORITHM - FULL TRACE
-        // ============================================================
-        log("\n");
-        log("============================================================");
-        log("              ENCRYPTION PROCESS START                      ");
-        log("============================================================");
-        log("Algorithm: 10-Round Block Cipher with IV");
-        log("Key (128-bit): " + this.key128Bit);
-        log("------------------------------------------------------------\n");
-        
-        // ====== STEP 1: INITIALIZATION ======
-        log("STEP 1: INITIALIZATION");
-        log("------------------------------------------------------------");
-        log("Input plaintext: \"" + plaintext + "\"");
+        // Concise educational logging
+        log("\n[ENCRYPTION START] " + plaintext.length() + " bytes");
         
         byte[] plaintextBytes = plaintext.getBytes();
-        log("Plaintext size:  " + plaintextBytes.length + " bytes");
-        log("Plaintext (HEX): " + bytesToHex(plaintextBytes));
-        log("Plaintext (DEC): " + bytesToDecimal(plaintextBytes));
         
-        // Generate IV
+        // Generate IV and apply pre-whitening
         byte[] iv = generateIV();
-        log("\nGenerated IV (Initialization Vector):");
-        log("  Purpose: Ensures same plaintext produces different ciphertext");
-        log("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
-        log("  IV (HEX):    " + bytesToHex(iv));
-        log("  IV size:     " + iv.length + " bytes (128-bit)\n");
-        
-        // ====== STEP 2: PRE-WHITENING ======
-        log("STEP 2: PRE-WHITENING (XOR with IV)");
-        log("------------------------------------------------------------");
-        log("Operation: Plaintext XOR IV");
-        log("Purpose: Hide plaintext patterns before main encryption");
+        log("  Step 1: Generated IV (full 128-bit):");
+        log("    IV: " + bytesToHex(iv));
         
         byte[] xored = xorWithIV(plaintextBytes, iv);
-        log("\nBefore XOR (Plaintext): " + bytesToHex(plaintextBytes));
-        log("XOR Key (IV):           " + bytesToHex(iv).substring(0, Math.min(plaintextBytes.length * 2, bytesToHex(iv).length())));
-        log("After XOR (Whitened):   " + bytesToHex(xored));
-        log("Status: Pre-whitening complete - data is now randomized\n");
+        log("  Step 2: Pre-whitening (XOR with IV)");
+        log("    After whitening: " + bytesToHex(xored));
         
         byte[] block = xored;
 
-        // ====== STEP 3: 10-ROUND TRANSFORMATION ======
-        log("STEP 3: MULTI-ROUND TRANSFORMATION");
-        log("------------------------------------------------------------");
-        log("Total Rounds: " + ROUNDS);
-        log("Each round applies: (1) Transform (2) Split & Mix");
-        log("============================================================\n");
+        // 10-Round transformation with smart logging
+        log("  Step 3: 10-Round Transformation (Transform + Shuffle):");
         
         for (int round = 1; round <= ROUNDS; round++) {
-            log("  +-------------------------------------------------------+");
-            log("  |  ROUND " + String.format("%2d", round) + " / " + ROUNDS + "                                         |");
-            log("  +-------------------------------------------------------+");
-            log("  Input Data:  " + formatHex(block, 48));
-            log("  Data Size:   " + block.length + " bytes");
-            
-            // Sub-step 1: Transform
-            log("\n  >> Sub-Step 1: Byte Transformation");
-            log("     - Substituting bytes using key-dependent S-box");
-            log("     - Adding round-specific key material");
+            // Apply key-dependent transform FIRST
             block = PerRoundLogic.transform(block, round, this.key128Bit);
-            log("     After Transform: " + formatHex(block, 48));
             
-            // Sub-step 2: Split and Mix
-            log("\n  >> Sub-Step 2: Split & Mix (Diffusion)");
-            log("     - Splitting block into chunks");
-            log("     - Mixing positions for avalanche effect");
+            // Then apply chunk shuffle
             block = PerRoundLogic.splitAndMix(block, round, this.key128Bit);
-            log("     After Split&Mix: " + formatHex(block, 48));
             
-            log("\n  Output Data: " + formatHex(block, 48));
-            log("  Round " + round + " Status: COMPLETE");
-            log("  +-------------------------------------------------------+\n");
+            // Log first 2 rounds, last 2 rounds with full ciphertext
+            if (round <= 2 || round >= ROUNDS - 1) {
+                log("    [Round " + round + "] After transform+shuffle: " + bytesToHex(block));
+            } else if (round == 3) {
+                log("    ... (Rounds 3-" + (ROUNDS-2) + " processing) ...");
+            }
         }
         
-        log("============================================================");
-        log("All 10 rounds complete!");
-        log("Final encrypted block (before IV embedding):");
-        log("  Full HEX: " + bytesToHex(block));
-        log("  Size:     " + block.length + " bytes\n");
-
-        // ====== STEP 4: IV EMBEDDING ======
-        log("STEP 4: IV EMBEDDING (Multi-Position XOR)");
-        log("------------------------------------------------------------");
-        log("Purpose: Hide IV at multiple positions within ciphertext");
-        log("Method:  XOR IV at positions 0%, 25%, 50%, 75% + prepend IV");
-        
+        log("  Step 4: IV Embedding (multi-position XOR)");
         byte[] finalCiphertext = embedIVMultiPosition(iv, block);
+        log("    After IV embedding: " + bytesToHex(finalCiphertext));
         
         String encrypted = Base64.getEncoder().encodeToString(finalCiphertext);
-        log("\nFinal encrypted data:");
-        log("  Raw bytes:   " + finalCiphertext.length + " bytes");
-        log("  Base64:      " + encrypted);
-        log("  Base64 len:  " + encrypted.length() + " characters");
-        log("\n============================================================");
-        log("              ENCRYPTION PROCESS COMPLETE                   ");
-        log("============================================================\n");
+        log("  Result: " + finalCiphertext.length + " bytes -> " + encrypted.length() + " chars (Base64)");
+        log("    Base64: " + encrypted);
+        log("[ENCRYPTION COMPLETE]\n");
         return encrypted;
     }
 
@@ -143,102 +87,44 @@ public class BlockCipher {
      * Decrypt ciphertext - reverses all encryption operations
      */
     public String decrypt(String ciphertext) {
-        // ============================================================
-        //              DECRYPTION ALGORITHM - FULL TRACE
-        // ============================================================
-        log("\n");
-        log("============================================================");
-        log("              DECRYPTION PROCESS START                      ");
-        log("============================================================");
-        log("Algorithm: Reverse 10-Round Block Cipher with IV");
-        log("Key (128-bit): " + this.key128Bit);
-        log("------------------------------------------------------------\n");
-        
-        log("Input ciphertext (Base64): " + ciphertext);
-        log("Ciphertext length: " + ciphertext.length() + " characters");
+        log("\n[DECRYPTION START] " + ciphertext.length() + " chars (Base64)");
         
         // Decode from Base64
         byte[] data = Base64.getDecoder().decode(ciphertext);
-        log("Decoded to binary: " + data.length + " bytes\n");
+        log("  Step 1: Decoded to " + data.length + " bytes");
+        log("    Base64 input: " + ciphertext);
         
-        // ====== STEP 1: IV EXTRACTION ======
-        log("STEP 1: IV EXTRACTION (Multi-Position Reverse XOR)");
-        log("------------------------------------------------------------");
-        log("Extracting IV from embedded positions...");
-        
+        // Extract IV
         byte[][] extracted = extractIVMultiPosition(data);
         byte[] iv = extracted[0];
         byte[] actualCiphertext = extracted[1];
-        
-        log("\nExtracted IV:");
-        log("  IV (Base64): " + Base64.getEncoder().encodeToString(iv));
-        log("  IV (HEX):    " + bytesToHex(iv));
-        log("  IV size:     " + iv.length + " bytes");
-        
-        log("\nCiphertext block (after IV removal):");
-        log("  Full HEX: " + bytesToHex(actualCiphertext));
-        log("  Size:     " + actualCiphertext.length + " bytes\n");
+        log("  Step 2: Extracted IV (" + bytesToHex(iv).substring(0, 16) + "...)");
+        log("    After IV extraction: " + bytesToHex(actualCiphertext));
         
         byte[] block = actualCiphertext;
 
-        // ====== STEP 2: REVERSE 10-ROUND TRANSFORMATION ======
-        log("STEP 2: REVERSE MULTI-ROUND TRANSFORMATION");
-        log("------------------------------------------------------------");
-        log("Total Rounds: " + ROUNDS + " (applying in reverse order)");
-        log("Each round reverses: (1) Unsplit & Unmix (2) Reverse Transform");
-        log("============================================================\n");
+        // Reverse 10-Round transformation with smart logging
+        log("  Step 3: Reverse 10-Round Transformation:");
         
         for (int round = ROUNDS; round >= 1; round--) {
-            log("  +-------------------------------------------------------+");
-            log("  |  ROUND " + String.format("%2d", round) + " REVERSE (Unwinding Round " + round + ")              |");
-            log("  +-------------------------------------------------------+");
-            log("  Input Data:  " + formatHex(block, 48));
-            log("  Data Size:   " + block.length + " bytes");
-            
-            // Sub-step 1: Unsplit and Unmix
-            log("\n  >> Sub-Step 1: Unsplit & Unmix (Reverse Diffusion)");
-            log("     - Unmixing positions");
-            log("     - Rejoining split chunks");
             block = PerRoundLogic.unsplitAndUnmix(block, round, this.key128Bit);
-            log("     After Unsplit&Unmix: " + formatHex(block, 48));
-            
-            // Sub-step 2: Reverse Transform
-            log("\n  >> Sub-Step 2: Reverse Byte Transformation");
-            log("     - Removing round-specific key material");
-            log("     - Applying inverse S-box substitution");
             block = PerRoundLogic.reverseTransform(block, round, this.key128Bit);
-            log("     After Reverse Transform: " + formatHex(block, 48));
             
-            log("\n  Output Data: " + formatHex(block, 48));
-            log("  Round " + round + " Reverse Status: COMPLETE");
-            log("  +-------------------------------------------------------+\n");
+            // Log first 2 rounds (in reverse), last 2 rounds with full ciphertext
+            if (round >= ROUNDS - 1 || round <= 2) {
+                log("    Round " + round + " (reverse): " + bytesToHex(block));
+            } else if (round == ROUNDS - 2) {
+                log("    ... (Rounds " + (ROUNDS-2) + "-3 processing in reverse) ...");
+            }
         }
         
-        log("============================================================");
-        log("All rounds reversed!");
-        log("Data after reversing all transformations:");
-        log("  Full HEX: " + bytesToHex(block));
-        log("  Size:     " + block.length + " bytes\n");
-
-        // ====== STEP 3: POST-WHITENING ======
-        log("STEP 3: POST-WHITENING (Reverse XOR with IV)");
-        log("------------------------------------------------------------");
-        log("Operation: Whitened_Data XOR IV = Original_Plaintext");
-        log("Purpose: Recover original plaintext from whitened data");
-        
+        log("  Step 4: Post-whitening (XOR with IV)");
         byte[] plaintext = xorWithIV(block, iv);
-        
-        log("\nBefore XOR (Whitened):     " + bytesToHex(block));
-        log("XOR Key (IV):              " + bytesToHex(iv).substring(0, Math.min(block.length * 2, bytesToHex(iv).length())));
-        log("After XOR (Plaintext HEX): " + bytesToHex(plaintext));
+        log("    After whitening: " + bytesToHex(plaintext));
         
         String decrypted = new String(plaintext);
-        log("\nRecovered plaintext: \"" + decrypted + "\"");
-        log("Plaintext size: " + plaintext.length + " bytes");
-        
-        log("\n============================================================");
-        log("              DECRYPTION PROCESS COMPLETE                   ");
-        log("============================================================\n");
+        log("  Result: \"" + (decrypted.length() > 50 ? decrypted.substring(0, 50) + "..." : decrypted) + "\" (" + plaintext.length + " bytes)");
+        log("[DECRYPTION COMPLETE]\n");
         return decrypted;
     }
     
@@ -277,38 +163,33 @@ public class BlockCipher {
     private byte[] embedIVMultiPosition(byte[] iv, byte[] ciphertext) {
         byte[] modifiedCipher = Arrays.copyOf(ciphertext, ciphertext.length);
         
+        log("\nIV Embedding Process:");
+        log("  Ciphertext BEFORE IV embedding: " + bytesToHex(ciphertext));
+        
         // Calculate strategic positions (4 positions spread across the ciphertext)
         int[] positions = calculateIVPositions(ciphertext.length);
         
-        log("\nEmbedding IV at multiple strategic positions:");
-        log("  Total positions: " + positions.length);
+        log("  Embedding IV at " + positions.length + " strategic positions:");
         
         for (int i = 0; i < positions.length; i++) {
             int pos = positions[i];
             double percentage = (pos * 100.0 / ciphertext.length);
-            log("  Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + " of ciphertext)");
+            log("    Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + ")");
             
             // XOR IV bytes at this position (cycle through IV if needed)
             for (int j = 0; j < IV_SIZE && (pos + j) < modifiedCipher.length; j++) {
-                byte before = modifiedCipher[pos + j];
                 modifiedCipher[pos + j] ^= iv[j];
-                byte after = modifiedCipher[pos + j];
-                if (i == 0 && j < 4) { // Show first few XOR operations as example
-                    log("      Byte " + (pos + j) + ": 0x" + String.format("%02X", before) + 
-                                     " XOR 0x" + String.format("%02X", iv[j]) + 
-                                     " = 0x" + String.format("%02X", after));
-                }
             }
         }
+        
+        log("  Ciphertext AFTER IV XOR: " + bytesToHex(modifiedCipher));
         
         // Prepend IV for extraction reference
         byte[] result = new byte[IV_SIZE + modifiedCipher.length];
         System.arraycopy(iv, 0, result, 0, IV_SIZE);
         System.arraycopy(modifiedCipher, 0, result, IV_SIZE, modifiedCipher.length);
         
-        log("\nIV embedding complete:");
-        log("  IV prepended at start: " + IV_SIZE + " bytes");
-        log("  IV XORed at " + positions.length + " positions inside ciphertext");
+        log("  Final result (IV prepended): " + bytesToHex(result));
         log("  Total output size: " + result.length + " bytes");
         return result;
     }
@@ -348,21 +229,68 @@ public class BlockCipher {
     }
 
     /**
-     * Calculate strategic positions for IV embedding
-     * Returns 4 positions spread across the data: 0%, 25%, 50%, 75%
+     * Calculate strategic positions for IV embedding using key-dependent unpredictable positions
+     * Uses key to generate seemingly random but reproducible positions
      */
     private int[] calculateIVPositions(int dataLength) {
-        if (dataLength < IV_SIZE * 4) {
-            // If data is too short, just use start position
+        if (dataLength <= 1) {
             return new int[] { 0 };
         }
         
-        return new int[] {
-            0,                          // Start (0%)
-            dataLength / 4,             // 25%
-            dataLength / 2,             // 50%
-            (dataLength * 3) / 4        // 75%
-        };
+        // Calculate key sum for seeding position generation
+        int keySeed = 0;
+        for (int i = 0; i < this.key128Bit.length(); i++) {
+            keySeed += this.key128Bit.charAt(i) * (i + 1);
+        }
+        
+        // Determine number of positions based on data size
+        int numPositions;
+        if (dataLength < 8) {
+            numPositions = 2;  // Very small: 2 positions
+        } else if (dataLength < 16) {
+            numPositions = 3;  // Small: 3 positions
+        } else if (dataLength < 64) {
+            numPositions = 4;  // Medium: 4 positions
+        } else {
+            numPositions = 5;  // Large: 5 positions
+        }
+        
+        int[] positions = new int[numPositions];
+        
+        // Start with key-based seed
+        long hash = keySeed;
+        
+        // Use XOR-based hash mixing for better distribution
+        // This ensures positions are spread across the entire data range
+        for (int i = 0; i < numPositions; i++) {
+            // Hash mixing using XOR and bit shifts (Knuth multiplicative hash)
+            hash ^= (hash << 13);
+            hash ^= (hash >>> 17);
+            hash ^= (hash << 5);
+            hash += i * 2654435761L;  // Large prime for position variation
+            
+            // Map to position: take absolute value, modulo dataLength
+            int position = (int)(Math.abs(hash) % dataLength);
+            
+            // Ensure position is within bounds
+            position = Math.max(0, Math.min(dataLength - 1, position));
+            
+            positions[i] = position;
+        }
+        
+        // Sort positions to ensure they're in order (for consistent XOR)
+        java.util.Arrays.sort(positions);
+        
+        // Remove duplicates (in case positions collide on small data)
+        int uniqueCount = 0;
+        for (int i = 0; i < positions.length; i++) {
+            if (i == 0 || positions[i] != positions[i-1]) {
+                positions[uniqueCount++] = positions[i];
+            }
+        }
+        
+        // Return only unique positions
+        return java.util.Arrays.copyOf(positions, uniqueCount);
     }
     
     /**
@@ -374,29 +302,5 @@ public class BlockCipher {
             hex.append(String.format("%02X", b));
         }
         return hex.toString();
-    }
-    
-    /**
-     * Helper method to convert byte array to decimal string for logging
-     */
-    private static String bytesToDecimal(byte[] bytes) {
-        StringBuilder dec = new StringBuilder();
-        for (int i = 0; i < bytes.length; i++) {
-            if (i > 0) dec.append(" ");
-            dec.append(String.format("%3d", bytes[i] & 0xFF));
-        }
-        return dec.toString();
-    }
-    
-    /**
-     * Helper method to format hex with maximum length (truncate if too long)
-     */
-    private static String formatHex(byte[] bytes, int maxChars) {
-        String hex = bytesToHex(bytes);
-        if (hex.length() <= maxChars) {
-            return hex;
-        } else {
-            return hex.substring(0, maxChars) + "... (+" + (hex.length() - maxChars) + " more)";
-        }
     }
 }
