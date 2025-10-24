@@ -13,10 +13,28 @@ public class BlockCipher {
     // Set to true to enable educational logging (optimized for performance)
     public static final boolean VERBOSE_LOGGING = true;  // Public so PerRoundLogic can access
     
+    // File transfer mode: minimal logging for performance
+    private static boolean fileTransferMode = false;
+    
     // Helper method for conditional logging
     private static void log(String message) {
+        if (VERBOSE_LOGGING && !fileTransferMode) {
+            System.out.println(message);
+        }
+    }
+    
+    // Minimal log that works even in file transfer mode
+    private static void minimalLog(String message) {
         if (VERBOSE_LOGGING) {
             System.out.println(message);
+        }
+    }
+    
+    // Enable/disable file transfer mode
+    public static void setFileTransferMode(boolean enabled) {
+        fileTransferMode = enabled;
+        if (enabled) {
+            minimalLog("[PERFORMANCE MODE] Detailed encryption logs minimized for file transfer");
         }
     }
 
@@ -38,7 +56,25 @@ public class BlockCipher {
      * 5. Base64 encode for transmission
      */
     public String encrypt(String plaintext) {
-        // Concise educational logging
+        // Minimal logging for file transfer mode
+        if (fileTransferMode) {
+            minimalLog("[ENCRYPT] " + plaintext.length() + " bytes → IV gen → Pre-whiten → 10 rounds → IV embed → Base64");
+            byte[] plaintextBytes = plaintext.getBytes();
+            byte[] iv = generateIV();
+            byte[] xored = xorWithIV(plaintextBytes, iv);
+            byte[] block = xored;
+            
+            for (int round = 1; round <= ROUNDS; round++) {
+                block = PerRoundLogic.transform(block, round, this.key128Bit);
+                block = PerRoundLogic.splitAndMix(block, round, this.key128Bit);
+            }
+            
+            byte[] finalCiphertext = embedIVMultiPosition(iv, block);
+            String encrypted = Base64.getEncoder().encodeToString(finalCiphertext);
+            return encrypted;
+        }
+        
+        // Full educational logging for text messages
         log("\n[ENCRYPTION START] " + plaintext.length() + " bytes");
         
         byte[] plaintextBytes = plaintext.getBytes();
@@ -72,12 +108,11 @@ public class BlockCipher {
             }
         }
         
-        log("  Step 4: IV Embedding (multi-position XOR)");
+        log("  Step 4: IV Embedding (dual strategy)");
         byte[] finalCiphertext = embedIVMultiPosition(iv, block);
-        log("    After IV embedding: " + bytesToHex(finalCiphertext));
         
         String encrypted = Base64.getEncoder().encodeToString(finalCiphertext);
-        log("  Result: " + finalCiphertext.length + " bytes -> " + encrypted.length() + " chars (Base64)");
+        log("\n  Final Result: " + finalCiphertext.length + " bytes -> " + encrypted.length() + " chars (Base64)");
         log("    Base64: " + encrypted);
         log("[ENCRYPTION COMPLETE]\n");
         return encrypted;
@@ -87,6 +122,26 @@ public class BlockCipher {
      * Decrypt ciphertext - reverses all encryption operations
      */
     public String decrypt(String ciphertext) {
+        // Minimal logging for file transfer mode
+        if (fileTransferMode) {
+            minimalLog("[DECRYPT] " + ciphertext.length() + " chars → Base64 decode → IV extract → 10 rounds reverse → Post-whiten");
+            byte[] data = Base64.getDecoder().decode(ciphertext);
+            byte[][] extracted = extractIVMultiPosition(data);
+            byte[] iv = extracted[0];
+            byte[] actualCiphertext = extracted[1];
+            byte[] block = actualCiphertext;
+            
+            for (int round = ROUNDS; round >= 1; round--) {
+                block = PerRoundLogic.unsplitAndUnmix(block, round, this.key128Bit);
+                block = PerRoundLogic.reverseTransform(block, round, this.key128Bit);
+            }
+            
+            byte[] plaintext = xorWithIV(block, iv);
+            String decrypted = new String(plaintext);
+            return decrypted;
+        }
+        
+        // Full educational logging for text messages
         log("\n[DECRYPTION START] " + ciphertext.length() + " chars (Base64)");
         
         // Decode from Base64
@@ -150,82 +205,201 @@ public class BlockCipher {
     }
 
     /**
-     * ENHANCEMENT #2: Multi-position IV embedding using XOR
+     * ENHANCED: Multi-position IV embedding using BOTH XOR and INSERT strategies
      * 
-     * Strategy: XOR the IV at multiple strategic positions within the ciphertext
-     * This makes it harder to identify where the IV is located
+     * Strategy 1: XOR IV at strategic positions (obfuscation)
+     * Strategy 2: Break IV into pieces and INSERT at different positions (diffusion)
      * 
-     * Positions: Start, 25%, 50%, 75% of ciphertext length
-     * We also prepend the IV at the beginning for extraction reference
-     * 
-     * Format: [IV_16bytes][modified_ciphertext_with_IV_XORed_at_positions]
+     * This dual-layer approach makes the IV extremely difficult to locate
      */
     private byte[] embedIVMultiPosition(byte[] iv, byte[] ciphertext) {
-        byte[] modifiedCipher = Arrays.copyOf(ciphertext, ciphertext.length);
+        log("\nIV Embedding Process (Dual Strategy):");
+        log("  Original IV (16 bytes): " + bytesToHex(iv));
+        log("  Ciphertext BEFORE embedding: " + bytesToHex(ciphertext));
         
-        log("\nIV Embedding Process:");
-        log("  Ciphertext BEFORE IV embedding: " + bytesToHex(ciphertext));
+        // STRATEGY 1: XOR IV at positions for obfuscation
+        byte[] xoredCipher = Arrays.copyOf(ciphertext, ciphertext.length);
+        int[] xorPositions = calculateIVPositions(ciphertext.length);
         
-        // Calculate strategic positions (4 positions spread across the ciphertext)
-        int[] positions = calculateIVPositions(ciphertext.length);
-        
-        log("  Embedding IV at " + positions.length + " strategic positions:");
-        
-        for (int i = 0; i < positions.length; i++) {
-            int pos = positions[i];
+        log("\n  Strategy 1: XOR IV at " + xorPositions.length + " positions:");
+        for (int i = 0; i < xorPositions.length; i++) {
+            int pos = xorPositions[i];
             double percentage = (pos * 100.0 / ciphertext.length);
-            log("    Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + ")");
+            log("    XOR Position " + (i+1) + ": Byte offset " + pos + " (" + String.format("%.1f%%", percentage) + ")");
             
-            // XOR IV bytes at this position (cycle through IV if needed)
-            for (int j = 0; j < IV_SIZE && (pos + j) < modifiedCipher.length; j++) {
-                modifiedCipher[pos + j] ^= iv[j];
+            // XOR IV bytes at this position
+            for (int j = 0; j < IV_SIZE && (pos + j) < xoredCipher.length; j++) {
+                xoredCipher[pos + j] ^= iv[j];
             }
         }
+        log("  After XOR: " + bytesToHex(xoredCipher));
         
-        log("  Ciphertext AFTER IV XOR: " + bytesToHex(modifiedCipher));
+        // STRATEGY 2: Break IV into pieces and INSERT at different positions
+        int numInsertPositions = Math.min(4, Math.max(2, xoredCipher.length / 4));
+        int ivChunkSize = IV_SIZE / numInsertPositions;
         
-        // Prepend IV for extraction reference
-        byte[] result = new byte[IV_SIZE + modifiedCipher.length];
-        System.arraycopy(iv, 0, result, 0, IV_SIZE);
-        System.arraycopy(modifiedCipher, 0, result, IV_SIZE, modifiedCipher.length);
+        int[] insertPositions = new int[numInsertPositions];
+        int keySeed = 0;
+        for (int i = 0; i < this.key128Bit.length(); i++) {
+            keySeed += this.key128Bit.charAt(i) * (i + 1);
+        }
         
-        log("  Final result (IV prepended): " + bytesToHex(result));
-        log("  Total output size: " + result.length + " bytes");
+        long hash = keySeed + 12345; // Different seed than XOR positions
+        for (int i = 0; i < numInsertPositions; i++) {
+            hash ^= (hash << 13);
+            hash ^= (hash >>> 17);
+            hash ^= (hash << 5);
+            hash += i * 2654435761L;
+            int position = (int)(Math.abs(hash) % (xoredCipher.length + 1));
+            insertPositions[i] = position;
+        }
+        java.util.Arrays.sort(insertPositions);
+        
+        log("\n  Strategy 2: Break IV into " + numInsertPositions + " chunks and INSERT:");
+        
+        // Show how IV is broken into pieces with positions
+        StringBuilder ivBreakdown = new StringBuilder("    IV breakdown: ");
+        int ivPos = 0;
+        for (int i = 0; i < numInsertPositions; i++) {
+            int chunkSize = (i == numInsertPositions - 1) ? (IV_SIZE - ivPos) : ivChunkSize;
+            double percentage = (insertPositions[i] * 100.0 / xoredCipher.length);
+            ivBreakdown.append("Chunk").append(i+1).append("[").append(bytesToHex(Arrays.copyOfRange(iv, ivPos, ivPos + chunkSize)))
+                       .append("] at ").append(String.format("%.1f%%", percentage)).append(" ");
+            ivPos += chunkSize;
+        }
+        log(ivBreakdown.toString());
+        
+        // Build result by inserting IV chunks at calculated positions into XORed ciphertext
+        byte[] result = new byte[xoredCipher.length + IV_SIZE];
+        int srcPos = 0;  // Position in XORed ciphertext
+        int destPos = 0; // Position in result
+        ivPos = 0;       // Position in IV (reset)
+        
+        log("    Combining ciphertext + IV chunks:");
+        
+        for (int i = 0; i < numInsertPositions; i++) {
+            // Copy ciphertext up to insertion point
+            int copyLen = insertPositions[i] - srcPos;
+            if (copyLen > 0) {
+                double cipherStartPct = (srcPos * 100.0 / xoredCipher.length);
+                double cipherEndPct = ((srcPos + copyLen) * 100.0 / xoredCipher.length);
+                log("      [Cipher:" + bytesToHex(Arrays.copyOfRange(xoredCipher, srcPos, srcPos + copyLen)) + 
+                    "] (" + String.format("%.1f%% - %.1f%%", cipherStartPct, cipherEndPct) + ")");
+                System.arraycopy(xoredCipher, srcPos, result, destPos, copyLen);
+                srcPos += copyLen;
+                destPos += copyLen;
+            }
+            
+            // Insert IV chunk
+            int chunkSize = (i == numInsertPositions - 1) ? (IV_SIZE - ivPos) : ivChunkSize;
+            double insertPct = (insertPositions[i] * 100.0 / xoredCipher.length);
+            log("      [IV-Chunk" + (i+1) + ":" + bytesToHex(Arrays.copyOfRange(iv, ivPos, ivPos + chunkSize)) + 
+                "] <- inserted at position " + insertPositions[i] + " (" + String.format("%.1f%%", insertPct) + ")");
+            System.arraycopy(iv, ivPos, result, destPos, chunkSize);
+            
+            ivPos += chunkSize;
+            destPos += chunkSize;
+        }
+        
+        // Copy remaining ciphertext
+        if (srcPos < xoredCipher.length) {
+            double cipherStartPct = (srcPos * 100.0 / xoredCipher.length);
+            log("      [Cipher:" + bytesToHex(Arrays.copyOfRange(xoredCipher, srcPos, xoredCipher.length)) + 
+                "] (" + String.format("%.1f%% - 100.0%%", cipherStartPct) + ")");
+            System.arraycopy(xoredCipher, srcPos, result, destPos, xoredCipher.length - srcPos);
+        }
+        
+        log("\n  Final embedded result: " + bytesToHex(result));
+        log("  Total size: " + result.length + " bytes (cipher " + ciphertext.length + " + IV " + IV_SIZE + ")");
         return result;
     }
 
     /**
-     * ENHANCEMENT #2 (Reverse): Extract IV from multiple positions
+     * ENHANCED (Reverse): Extract IV from multiple positions - reverses BOTH strategies
      */
     private byte[][] extractIVMultiPosition(byte[] data) {
-        // Extract prepended IV
+        log("\nIV Extraction Process (Reverse Dual Strategy):");
+        log("  Input data: " + bytesToHex(data));
+        
+        // STRATEGY 2 (Reverse): First, extract inserted IV chunks
+        // Calculate how many insert positions were used based on original cipher length
+        int originalCiphertextLength = data.length - IV_SIZE;
+        int numInsertPositions = Math.min(4, Math.max(2, originalCiphertextLength / 4));
+        int ivChunkSize = IV_SIZE / numInsertPositions;
+        
+        // Recalculate INSERT positions (same algorithm as encryption)
+        int keySeed = 0;
+        for (int i = 0; i < this.key128Bit.length(); i++) {
+            keySeed += this.key128Bit.charAt(i) * (i + 1);
+        }
+        
+        long hash = keySeed + 12345; // Same different seed as encryption
+        int[] insertPositions = new int[numInsertPositions];
+        for (int i = 0; i < numInsertPositions; i++) {
+            hash ^= (hash << 13);
+            hash ^= (hash >>> 17);
+            hash ^= (hash << 5);
+            hash += i * 2654435761L;
+            int position = (int)(Math.abs(hash) % (originalCiphertextLength + 1));
+            insertPositions[i] = position;
+        }
+        java.util.Arrays.sort(insertPositions);
+        
+        log("\n  Strategy 2 (Reverse): Extracting IV from " + numInsertPositions + " INSERT positions:");
+        
+        // Extract IV chunks and rebuild XORed ciphertext
         byte[] iv = new byte[IV_SIZE];
-        System.arraycopy(data, 0, iv, 0, IV_SIZE);
+        byte[] xoredCipher = new byte[originalCiphertextLength];
         
-        // Extract modified ciphertext
-        byte[] modifiedCipher = new byte[data.length - IV_SIZE];
-        System.arraycopy(data, IV_SIZE, modifiedCipher, 0, modifiedCipher.length);
+        int srcPos = 0;     // Position in embedded data
+        int cipherPos = 0;  // Position in reconstructed ciphertext
+        int ivPos = 0;      // Position in reconstructed IV
         
-        // Calculate same positions as encryption
-        int[] positions = calculateIVPositions(modifiedCipher.length);
-        
-        log("Extracting IV from multiple positions (reverse operation):");
-        log("  Prepended IV extracted: " + IV_SIZE + " bytes");
-        log("  Total XOR positions: " + positions.length);
-        
-        for (int i = 0; i < positions.length; i++) {
-            int pos = positions[i];
-            log("  Position " + (i+1) + ": Byte offset " + pos + " (reversing XOR)");
+        for (int i = 0; i < numInsertPositions; i++) {
+            // Copy ciphertext up to IV chunk position
+            int copyLen = insertPositions[i] - cipherPos;
+            if (copyLen > 0) {
+                System.arraycopy(data, srcPos, xoredCipher, cipherPos, copyLen);
+                srcPos += copyLen;
+                cipherPos += copyLen;
+            }
             
-            // Reverse XOR operation (XOR is its own inverse)
-            for (int j = 0; j < IV_SIZE && (pos + j) < modifiedCipher.length; j++) {
-                modifiedCipher[pos + j] ^= iv[j];
+            // Extract IV chunk
+            int chunkSize = (i == numInsertPositions - 1) ? (IV_SIZE - ivPos) : ivChunkSize;
+            System.arraycopy(data, srcPos, iv, ivPos, chunkSize);
+            
+            log("    Extract IV[" + ivPos + ".." + (ivPos+chunkSize-1) + "] from position " + insertPositions[i]);
+            
+            ivPos += chunkSize;
+            srcPos += chunkSize;
+        }
+        
+        // Copy remaining ciphertext
+        if (srcPos < data.length) {
+            System.arraycopy(data, srcPos, xoredCipher, cipherPos, data.length - srcPos);
+        }
+        
+        log("  Extracted IV: " + bytesToHex(iv));
+        log("  XORed ciphertext (after extraction): " + bytesToHex(xoredCipher));
+        
+        // STRATEGY 1 (Reverse): Remove XOR from the ciphertext
+        int[] xorPositions = calculateIVPositions(xoredCipher.length);
+        
+        log("\n  Strategy 1 (Reverse): Removing XOR from " + xorPositions.length + " positions:");
+        for (int i = 0; i < xorPositions.length; i++) {
+            int pos = xorPositions[i];
+            log("    Reverse XOR at position " + pos);
+            
+            // XOR again to reverse (XOR is its own inverse)
+            for (int j = 0; j < IV_SIZE && (pos + j) < xoredCipher.length; j++) {
+                xoredCipher[pos + j] ^= iv[j];
             }
         }
         
-        log("\nIV extraction complete:");
-        log("  Original ciphertext restored: " + modifiedCipher.length + " bytes");
-        return new byte[][] { iv, modifiedCipher };
+        log("  Final ciphertext (after XOR removal): " + bytesToHex(xoredCipher));
+        log("  Extraction complete!\n");
+        
+        return new byte[][] { iv, xoredCipher };
     }
 
     /**

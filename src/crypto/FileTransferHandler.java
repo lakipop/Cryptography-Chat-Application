@@ -80,6 +80,10 @@ public class FileTransferHandler {
         // Encrypt file in chunks
         List<EncryptedFileChunk> encryptedChunks = new ArrayList<>();
         
+        // Enable file transfer mode for minimal logging
+        BlockCipher.setFileTransferMode(true);
+        System.out.println("📝 Encryption logs minimized for performance. Send text message to see detailed logs.");
+        
         for (int i = 0; i < totalChunks; i++) {
             int start = i * CHUNK_SIZE;
             int end = Math.min(start + CHUNK_SIZE, fileData.length);
@@ -109,6 +113,9 @@ public class FileTransferHandler {
             
             encryptedChunks.add(chunk);
         }
+        
+        // Disable file transfer mode after completion
+        BlockCipher.setFileTransferMode(false);
         
         System.out.println("============================================================");
         System.out.println("        FILE PREPARATION COMPLETE");
@@ -147,6 +154,10 @@ public class FileTransferHandler {
         // Decrypt all chunks
         ByteArrayOutputStream fileOutputStream = new ByteArrayOutputStream();
         
+        // Enable file transfer mode for minimal logging
+        BlockCipher.setFileTransferMode(true);
+        System.out.println("📝 Decryption logs minimized for performance. Send text message to see detailed logs.");
+        
         for (int i = 0; i < encryptedChunks.size(); i++) {
             EncryptedFileChunk chunk = encryptedChunks.get(i);
             
@@ -167,6 +178,9 @@ public class FileTransferHandler {
             // Write to output stream
             fileOutputStream.write(chunkData);
         }
+        
+        // Disable file transfer mode after completion
+        BlockCipher.setFileTransferMode(false);
         
         byte[] completeFile = fileOutputStream.toByteArray();
         
