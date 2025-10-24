@@ -24,10 +24,13 @@ This project shows how real-world encryption systems work, similar to applicatio
 
 - **Hybrid Encryption**: RSA for key exchange + Custom cipher for messages
 - **Semantic Security**: Random IV ensures same message encrypts differently each time
-- **10 Rounds**: Strong diffusion matching AES-128 security level
-- **Byte-Level**: Full 0-255 range supporting any data type
+- **10 Rounds**: Strong diffusion matching AES-128 security level with multi-chunk shuffling
+- **Dual IV Embedding**: XOR obfuscation + physical insertion for maximum unpredictability
+- **Byte-Level**: Full 0-255 range supporting any data type (text, files, images)
 - **Digital Signatures**: Proves message authenticity and detects tampering
 - **Real-time Chat**: Client-server application with encrypted communication
+- **File Transfer**: Secure transmission of documents, images, and files with optimized performance
+- **Educational Logging**: Step-by-step encryption visualization with hex displays and percentages
 - **Visual Logging**: Watch encryption/decryption process step-by-step
 
 ---
@@ -120,35 +123,51 @@ java ChatSimulationGUI
 
 ### Fleurdelyx 10-Round Block Cipher
 
-**Design Philosophy:** Position-dependent byte transformations through multiple rounds.
+**Design Philosophy:** Position-dependent byte transformations with chunk-based shuffling through multiple rounds.
 
 **Encryption Process:**
 
 ```
-Plaintext → Convert to Bytes → XOR with IV → 10 Rounds → Add IV → Base64 → Ciphertext
+Plaintext → Convert to Bytes → XOR with IV → 10 Rounds (Split/Shuffle/Transform) → Dual IV Embed → Base64 → Ciphertext
 ```
 
 **Each Round Transformation:**
 ```
-For each byte at position i in round r:
-  shift = 5 + (r × 3) + key_digit
-  encrypted_byte = (byte + shift) mod 256
+1. Split data into 2-5 dynamic chunks (size varies by round and key)
+2. Shuffle chunks using Fisher-Yates algorithm (key-seeded)
+3. For each byte at position i:
+     shift = 5 + (round × 3) + key_digit
+     encrypted_byte = (byte + shift) mod 256
+4. Concatenate shuffled chunks
+```
+
+**Dual IV Embedding:**
+```
+1. XOR Strategy: XOR IV at multiple calculated positions (obfuscation)
+2. INSERT Strategy: Break IV into chunks, insert at strategic positions (diffusion)
+   Result: [Cipher] + [IV-Chunk1] + [Cipher] + [IV-Chunk2] + ... (interleaved)
 ```
 
 **Why 10 Rounds?**
 - Matches AES-128 standard (10 rounds for 128-bit keys)
 - Creates sufficient confusion (complex key-ciphertext relationship)
 - Provides strong diffusion (changes spread throughout message)
+- Chunk shuffling adds structural unpredictability
 - Balances security with performance
 
 **Decryption Process:**
 ```
-Ciphertext → Base64 Decode → Extract IV → Reverse 10 Rounds → XOR with IV → Plaintext
+Ciphertext → Base64 Decode → Extract Dual-Embedded IV → Reverse 10 Rounds (Unshuffle/Reverse Transform) → XOR with IV → Plaintext
 ```
 
 **Reverse transformation:**
 ```
-decrypted_byte = (byte - shift + 256) mod 256
+1. Extract IV chunks from insertion positions
+2. Remove XOR from strategic positions
+3. For each round (10 down to 1):
+     Reverse byte transformation: decrypted_byte = (byte - shift + 256) mod 256
+     Unshuffle chunks back to original order
+4. Concatenate original chunks
 ```
 
 ---
@@ -255,18 +274,32 @@ decrypted_byte = (byte - shift + 256) mod 256
 ## 🗂️ Project Structure
 
 ```
-Fleurdelyx-Cryptographic-Algorithm/
+Cryptography-Chat-Application/
 │
 ├── src/
-│   ├── BlockCipher.java              # 10-round encryption engine
-│   ├── PerRoundLogic.java            # Byte transformation logic
-│   ├── KeyGenerator.java             # Secure random key generation
-│   ├── RSAUtil.java                  # RSA operations and signatures
-│   ├── ChatServerGUI.java            # Server application
-│   ├── ChatClientGUI.java            # Client application
-│   └── ChatSimulationGUI.java        # Demonstration mode
+│   ├── crypto/
+│   │   ├── BlockCipher.java           # 10-round encryption engine with dual IV embedding
+│   │   ├── PerRoundLogic.java         # Multi-chunk shuffling and byte transformations
+│   │   ├── KeyGenerator.java          # Secure random key generation
+│   │   └── RSAUtil.java               # RSA operations and digital signatures
+│   │
+│   ├── ui/
+│   │   ├── ChatServerFX.java          # JavaFX server application
+│   │   ├── ChatClientFX.java          # JavaFX client application
+│   │   └── controllers/
+│   │       ├── ServerController.java  # Server UI logic and file handling
+│   │       └── ClientController.java  # Client UI logic and file handling
+│   │
+│   └── resources/
+│       ├── fxml/                      # JavaFX UI layouts
+│       └── css/                       # Modern green/zinc theme
 │
-├── README.md                         # Project overview 
+├── test/
+│   └── crypto/
+│       └── CryptoTestSuite.java       # Comprehensive encryption tests
+│
+├── README.md                          # Project documentation
+└── pom.xml                            # Maven configuration
 ```
 
 ---
