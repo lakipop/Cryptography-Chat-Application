@@ -9,9 +9,7 @@ Let me show you how the encryption works step by step.
 I will use my own name "Lakindu Sadumina" as the example message.
 ```
 
-## 📌 SECTION 2: ENCRYPTION PROCESS DEMO (4-5 minutes)
-### 🖥️ **[SHOW ON SCREEN + SPEAK]**
-
+## ENCRYPTION PROCESS DEMO (4-5 minutes)
 ### **Step 1: Generate Random IV**
 ```
 First, the system generates a random IV.
@@ -21,9 +19,6 @@ Every time we encrypt, we get different IV.
 This is why same message looks different each time.
 This is called "semantic security".
 ```
-
-**[VISUAL HINT: Show IV hex values on screen]**
-- Example: `BC F2 A3 BC BD 72 4C AF E8 A1 9C 73 4F 2D 8B 61`
 
 ---
 
@@ -204,8 +199,7 @@ Only the person with correct key can decrypt.
 
 ---
 
-## 📌 SECTION 3: SIGNATURE VERIFICATION (1 minute)
-### 🗣️ **[SPEAK]**
+## SIGNATURE VERIFICATION (1 minute)
 
 ```
 Now, how does the receiver know this message is really from me?
@@ -227,15 +221,12 @@ Because they don't have my private key.
 
 ---
 
-## 📌 SECTION 4: SECURITY BENEFITS (2 minutes)
-### 🗣️ **[SPEAK WITH CONFIDENCE - NATURAL FLOW]**
-
+## SECURITY BENEFITS (2 minutes)
 ```
 Now let me talk about the security benefits. Our algorithm protects what we call CIA - that's Confidentiality, Integrity, and Authentication. Let me explain each one simply.
 
 First is Confidentiality. The message is encrypted, so nobody can read it without the key. We use a 128-bit key, which means 2 to the power of 128 possible keys. That's 340 undecillion combinations - a huge number! So brute force attack is basically impossible. Next is Integrity. We use RSA digital signature for this. If someone changes even 1 bit in the message, the signature breaks immediately. So the receiver will know the message was modified. And third is Authentication. The digital signature proves who sent the message. Only I have my private key, so only I can create a valid signature for my messages.
 
-[Pause - take a breath]
 
 Now let me give you some real examples of how our system protects against actual attacks. First example - Man-in-the-Middle attack. Imagine an attacker intercepts my message to the server. What happens? Well, they cannot read it because it's encrypted. They cannot change it because the signature will break. And they cannot replay an old message because each message has a unique random IV. So our system completely blocks this attack.
 
@@ -246,15 +237,11 @@ Third example - Known Plaintext attack. Sometimes an attacker knows some plainte
 
 ---
 
-## 📌 SECTION 5: CONCLUSION (30 seconds)
-### 🗣️ **[SPEAK - CONFIDENT FINISH]**
+## CONCLUSION (30 seconds)
 
 ```
 So in summary, our Fleurdelyx algorithm uses 10 rounds of encryption with multi-chunk shuffling using Fisher-Yates algorithm, dual IV embedding for extra security, and RSA signature for authentication. It protects confidentiality, integrity, and authentication - the CIA principles. And it successfully resists modern attacks like man-in-the-middle, frequency analysis, and known plaintext attacks.
-
-[Point to working chat application on screen]
-
-Best part? It works in real-time for secure communication. You can see it running right here in our chat application.
+.
 
 Thank you. My part is finish. now I will pass it to my teammate who will explain the decryption process.
 ```
