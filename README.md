@@ -46,8 +46,13 @@ This project shows how real-world encryption systems work, similar to applicatio
 **1. Compile the Project**
 ```bash
 cd d:\Projects\Fleurdelyx-Cryptographic-Algorithm\src
-javac *.java
-```
+> **Use this method — Easiest way to run**
+>
+> Run the compiled files with the provided batch script:
+>
+> ```bat
+> START_CHAT.bat
+> ```
 
 **2. Start the Server**
 ```bash
@@ -67,13 +72,6 @@ java ChatClientGUI
 - Type message in either window
 - Click "Send 🔒" or press Enter
 - View encryption logs in second tab
-
-### Alternative: Simulation Mode
-```bash
-java ChatSimulationGUI
-```
-- No network setup needed
-- Demonstrates encryption visually
 
 ---
 

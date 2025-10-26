@@ -992,23 +992,7 @@ Platform.runLater(() ->
    - Byte-level operations support all data types
 
 ---
-
-## 📌 For Video Demonstration
-
-When demonstrating the code flow in your video:
-
-1. **Show GUI Launch** → Windows opening
-2. **Point out RSA key generation** → Happens in constructor
-3. **Explain connection** → Server waits, client connects
-4. **Highlight key exchange** → Public keys and symmetric key
-5. **Type and send message** → Show encryption log tab
-6. **Walk through encryption steps** → IV, 10 rounds, signature
-7. **Show received message** → Decryption steps, verification
-8. **Emphasize security features** → IV, 10 rounds, signatures
-
-This workflow matches your 15-20 minute video script perfectly! 🎥
-
----
+## 📄 Documentation
 
 **Document Created:** October 2025  
 **Purpose:** Educational demonstration of cryptographic system implementation  
